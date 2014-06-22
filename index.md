@@ -26,6 +26,38 @@ layout: default
 -->
 
 
+# Generic Image Library Tutorial 日本語訳
+
+この文章は[Generic Image Library Tutorial](http://stlab.adobe.com/gil/html/giltutorial.html)の日本語訳です。
+この日本語訳は原文の著者や権利者とまったく関係がありません。
+また、原文と訳文の正確さに関して、訳者は一切の責任を負いません。
+
+#### 原文:
+Generic Image Library Tutorial  
+<http://stlab.adobe.com/gil/html/giltutorial.html>
+
+#### 原文のVersion:
+2.1
+
+#### 原文のライセンス:
+Boost Software License, Version 1.0 (2008)  
+MIT License (2005-2007)
+
+#### 訳者:
+Hiroaki Nishihara (<hiro.nishihara@gmail.com>)
+
+#### 訳文のLicense:
+Boost Software License, Version 1.0
+
+#### 翻訳日時:
+2014年6月22日〜
+
+#### Repository:
+<https://github.com/hironishihara/GILTutorial-ja>
+
+***
+
+
 # Generic Image Library チュートリアル
 
 #### 著者:
