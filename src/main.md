@@ -104,3 +104,120 @@ Generic Image Library (GIL)は、画像に適用されるアルゴリズムか�
 [section_02_12]: index.md#section_02_12 "section_02_12"
 [section_03]: index.md#section_03 "section_03"
 [section_03_01]: index.md#section_03_01 "section_03_01"
+
+<!--
+Installation
+-->
+
+## インストール
+
+<!--
+The latest version of GIL can be downloaded from GIL's web page, at http://opensource.adobe.com/gil.
+GIL is approved for integration into Boost and in the future will be installed simply by installing Boost from http://www.boost.org.
+GIL consists of header files only and does not require any libraries to link against.
+It does not require Boost to be built.
+Including boost/gil/gil_all.hpp will be sufficient for most projects.
+-->
+
+最新バージョンのGILは、GILのWebサイト <http://opensource.adobe.com/gil> からダウンロードすることができます。
+GILはBoostへの統合が承認されており、近い将来、<http://www.boost.org>からBoostをインストールする際にGILも同時にインストールされるようになるでしょう。
+GILはヘッダーファイルだけで構成されており、他のライブラリのリンクは不要です。
+また、Boostのビルドも必要ありません。
+ほとんどのプロジェクトでは、`boost/gil/gil_all.hpp`をインクルードするだけで十分です。
+
+<!--
+Example - Computing the Image Gradient
+-->
+
+## 例題 - Gradient画像の算出
+
+<!--
+This tutorial will walk through an example of using GIL to compute the image gradients.
+We will start with some very simple and non-generic code and make it more generic as we go along.
+Let us start with a horizontal gradient and use the simplest possible approximation to a gradient - central difference.
+The gradient at pixel x can be approximated with the half-difference of its two neighboring pixels: D[x] = (I[x-1] - I[x+1]) / 2
+For simplicity, we will also ignore the boundary cases - the pixels along the edges of the image for which one of the neighbors is not defined.
+The focus of this document is how to use GIL, not how to create a good gradient generation algorithm.
+-->
+
+このチュートリアルは、Gradient画像を算出するというGILの使用例を通じて進めていくことにしましょう。
+まずは極めてシンプルでジェネリックでないコードからスタートし、それを少しずつジェネリックなコードにしていきましょう。
+水平方向Gradientから始めることとし、Gradientの最もシンプルな近似と思われる中心差分を使うことにしましょう。
+位置xにあるPixelのGradientは、その両隣のPixelの差分の1/2で近似されます。
+
+D[x] = (I[x-1] - I[x+1]) / 2
+
+簡単のために、境界ケース(すなわち、対象のPixelが画像の端にあって隣接Pixelの一報が定義されていないケース)は無視することにしましょう。
+この文章のフォーカスは、GILの使い方であり、上質なGradient画像生成アルゴリズムの作り方ではないのです。
+
+<!--
+Interface and Glue Code
+-->
+
+### インタフェースとグルーコード
+
+<!--
+Let us first start with 8-bit unsigned grayscale image as the input and 8-bit signed grayscale image as the output.
+Here is how the interface to our algorithm looks like:
+-->
+
+8-bit符号なしグレイスケール画像をインプット、8-bit符号ありグレイスケール画像をアウトプットとして始めましょう。
+まずは、GILを使って作られたアルゴリズムのインタフェースがどのような感じなのか示します。
+
+{% highlight C++ %}
+
+#include <boost/gil/gil_all.hpp>
+using namespace boost::gil;
+
+void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    assert(src.dimensions() == dst.dimensions());
+    ...    // compute the gradient
+}
+
+{% endhighlight %}
+
+<!--
+gray8c_view_t is the type of the source image view - an 8-bit grayscale view, whose pixels are read-only (denoted by the "c").
+The output is a grayscale view with a 8-bit signed (denoted by the "s") integer channel type.
+See Appendix 1 for the complete convension GIL uses to name concrete types.
+-->
+
+`gray8c_view_t`はインプット画像の型です。Pixelがread-only ("c"で表されています)の8-bitグレイスケールViewです。
+アウトプットは8-bit符号あり("s"で表されています)整数型のグレイスケール画像です。
+GILが定める型の命名規則については、付録を参照ください。
+
+<!--
+GIL makes a distinction between an image and an image view.
+A GIL image view, is a shallow, lightweight view of a rectangular grid of pixels.
+It provides access to the pixels but does not own the pixels. Copy-constructing a view does not deep-copy the pixels.
+Image views do not propagate their constness to the pixels and should always be taken by a const reference.
+Whether a view is mutable or read-only (immutable) is a property of the view type.
+
+A GIL image, on the other hand, is a view with associated ownership.
+It is a container of pixels; its constructor/destructor allocates/deallocates the pixels, its copy-constructor performs deep-copy of the pixels and its operator== performs deep-compare of the pixels.
+Images also propagate their constness to their pixels - a constant reference to an image will not allow for modifying its pixels.
+
+Most GIL algorithms operate on image views; images are rarely needed.
+GIL's design is very similar to that of the STL.
+The STL equivalent of GIL's image is a container, like std::vector, whereas GIL's image view corresponds to STL's range, which is often represented with a pair of iterators.
+STL algorithms operate on ranges, just like GIL algorithms operate on image views.
+
+GIL's image views can be constructed from raw data - the dimensions, the number of bytes per row and the pixels, which for chunky views are represented with one pointer.
+Here is how to provide the glue between your code and GIL:
+-->
+
+{% highlight C++ %}
+
+void ComputeXGradientGray8(const unsigned char* src_pixels, ptrdiff_t src_row_bytes, int w, int h,
+                                   signed char* dst_pixels, ptrdiff_t dst_row_bytes) {
+    gray8c_view_t src = interleaved_view(w, h, (const gray8_pixel_t*)src_pixels,src_row_bytes);
+    gray8s_view_t dst = interleaved_view(w, h, (     gray8s_pixel_t*)dst_pixels,dst_row_bytes);
+    x_gradient(src,dst);
+}
+
+{% endhighlight %}
+
+<!--
+This glue code is very fast and views are lightweight - in the above example the views have a size of 16 bytes.
+They consist of a pointer to the top left pixel and three integers - the width, height, and number of bytes per row.
+-->
