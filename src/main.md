@@ -237,7 +237,7 @@ First Implementation
 Focusing on simplicity at the expense of speed, we can compute the horizontal gradient like this:
 -->
 
-
+処理速度への影響がわかりやすくなるように、水平方向のgradientをまずは次のように計算します。
 
 ```cpp
 void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -255,6 +255,12 @@ A grayscale pixel is convertible to its channel type (unsigned char for src) and
 While the above code is easy to read, it is not very fast, because the binary operator() computes the location of the pixel in a 2D grid, which involves addition and multiplication.
 Here is a faster version of the above:
 -->
+
+Image Viewの`operator(x,y)`を使用して与えられた座標のPixel参照を取得し、その両隣のPixelの差分の1/2をそこに代入します。
+`operator()`はグレイスケールPixelの参照を返します。
+グレイスケールPixelはそのChannel (`src`における`unsigned char`)と変換可能であり、Channelからのコピーコンストラクションが可能です。(これが可能なのはグレイスケールPixelだけです。)
+上記のコードは読みやすいけれど、それほど高速ではありません。というのも、実行ファイル内の`operator()`が2次元格子上の座標を算出する際に和と積を用いているからです。
+上記のコードをより高速にしたバージョンを次に示します。
 
 ```cpp
 void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -275,10 +281,16 @@ If you are not familiar with random access iterators, think of them as if they w
 In fact, in the above example the two iterator types are raw C pointers and their operator[] is a fast pointer indexing operator.
 -->
 
+このコードでは、各行の先頭を指すように初期化されたPixel Iteratorを使用します。
+GILのIteratorはランダムアクセス走査Iteratorです．
+もしランダムアクセスIteratorに詳しくないのであれば、ひとまずポインタだと考えておけば大丈夫でしょう。
+実際に、上記の例における2個のIteratorはCポインタであり、`operator[]`はポインタの高速なインデクシングを行う演算子です。
 
 <!--
 The code to compute gradient in the vertical direction is very similar:
 -->
+
+垂直方向のgradientを計算するコードはとてもよく似ています。
 
 ```cpp
 void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -298,11 +310,20 @@ GIL uses here a special step iterator class whose size is 8 bytes - it contains 
 Its operator[] multiplies the index by its step.
 -->
 
+各行のループを回すかわりに、各列のループを回してその中で垂直方向に移動するIteratorである`y_iterator`を作成します。
+このとき、垂直方向に隣接するPixel間の距離はその画像の1行分のバイト数と等しくなっており、シンプルなポインタを使用することはできません。
+ここでGILはサイズが8バイトの特別なステップIterator (Cポインタとステップ幅の値を含んでいます)を使用します。
+`operator[]`はインデクス値とステップ幅の値との積を求めます。
+
 <!--
 The above version of y_gradient, however, is much slower (easily an order of magnitude slower) than x_gradient because of the memory access pattern;
 traversing an image vertically results in lots of cache misses.
 A much more efficient and cache-friendly version will iterate over the columns in the inner loop:
 -->
+
+しかし、上記のバージョンにおける`y_gradient`は、そのメモリアクセスパターンが原因で、`x_gradient`と比べて非常に低速です。
+垂直方向の画像の走査が、多くのキャッシュを無駄にするからです。
+より効率的でキャッシュフレンドリなバージョンでは、垂直方向のループの内部で各行の処理を反復します。
 
 ```cpp
 void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -323,3 +344,5 @@ void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
 <!--
 This sample code also shows an alternative way of using pixel iterators - instead of operator[] one could use increments and dereferences.
 -->
+
+このサンプルコードでは、`operator[]`を通してインクリメントと間接参照を行う方法のかわりに、Pixel Iteratorを用いる代替手段を示しています。
