@@ -225,3 +225,101 @@ They consist of a pointer to the top left pixel and three integers - the width, 
 
 このグルーコードはとても高速であり、2つのViewはとても軽量(上記の例では16バイトです)です。
 それぞれのViewは、左上隅のPixelを示すポインタと3個の整数(width、height、1行あたりのバイト数)から構成されています。
+
+
+<!--
+First Implementation
+-->
+
+### はじめてのインプリメンテーション
+
+<!--
+Focusing on simplicity at the expense of speed, we can compute the horizontal gradient like this:
+-->
+
+
+
+```cpp
+void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    for (int y=0; y<src.height(); ++y)
+        for (int x=1; x<src.width()-1; ++x)
+            dst(x,y) = (src(x-1,y) - src(x+1,y)) / 2;
+}
+```
+
+<!--
+We use image view's operator(x,y) to get a reference to the pixel at a given location and we set it to the half-difference of its left and right neighbors.
+operator() returns a reference to a grayscale pixel.
+A grayscale pixel is convertible to its channel type (unsigned char for src) and it can be copy-constructed from a channel.
+(This is only true for grayscale pixels).
+While the above code is easy to read, it is not very fast, because the binary operator() computes the location of the pixel in a 2D grid, which involves addition and multiplication.
+Here is a faster version of the above:
+-->
+
+```cpp
+void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    for (int y=0; y<src.height(); ++y) {
+        gray8c_view_t::x_iterator src_it = src.row_begin(y);
+        gray8s_view_t::x_iterator dst_it = dst.row_begin(y);
+
+        for (int x=1; x<src.width()-1; ++x)
+            dst_it[x] = (src_it[x-1] - src_it[x+1]) / 2;
+    }
+}
+```
+
+<!--
+We use pixel iterators initialized at the beginning of each row.
+GIL's iterators are Random Access Traversal iterators.
+If you are not familiar with random access iterators, think of them as if they were pointers.
+In fact, in the above example the two iterator types are raw C pointers and their operator[] is a fast pointer indexing operator.
+-->
+
+
+<!--
+The code to compute gradient in the vertical direction is very similar:
+-->
+
+```cpp
+void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    for (int x=0; x<src.width(); ++x) {
+        gray8c_view_t::y_iterator src_it = src.col_begin(x);
+        gray8s_view_t::y_iterator dst_it = dst.col_begin(x);
+
+        for (int y=1; y<src.height()-1; ++y)
+            dst_it[y] = (src_it[y-1] - src_it[y+1])/2;
+    }
+}
+```
+<!--
+Instead of looping over the rows, we loop over each column and create a y_iterator, an iterator moving vertically.
+In this case a simple pointer cannot be used because the distance between two adjacent pixels equals the number of bytes in each row of the image.
+GIL uses here a special step iterator class whose size is 8 bytes - it contains a raw C pointer and a step.
+Its operator[] multiplies the index by its step.
+-->
+
+<!--
+The above version of y_gradient, however, is much slower (easily an order of magnitude slower) than x_gradient because of the memory access pattern;
+traversing an image vertically results in lots of cache misses.
+A much more efficient and cache-friendly version will iterate over the columns in the inner loop:
+-->
+
+```cpp
+void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    for (int y=1; y<src.height()-1; ++y) {
+        gray8c_view_t::x_iterator src1_it = src.row_begin(y-1);
+        gray8c_view_t::x_iterator src2_it = src.row_begin(y+1);
+        gray8s_view_t::x_iterator dst_it = dst.row_begin(y);
+
+        for (int x=0; x<src.width(); ++x) {
+            *dst_it = ((*src1_it) - (*src2_it))/2;
+            ++dst_it;
+            ++src1_it;
+            ++src2_it;
+        }
+    }
+}
+```
+<!--
+This sample code also shows an alternative way of using pixel iterators - instead of operator[] one could use increments and dereferences.
+-->
