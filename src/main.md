@@ -432,4 +432,173 @@ void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
 In this example "src_loc[above]" corresponds to a fast pointer indexing operation and the code is efficient.
 -->
 
-この例における"`src_loc[above]``"はポインタの高速なインデクシングに相当しており、このコードは効率的です。
+この例における`src_loc[above]`はポインタの高速なインデクシングに相当しており、このコードは効率的です。
+
+<!--
+Creating a Generic Version of GIL Algorithms
+-->
+
+### ジェネリックなGILアルゴリズムの作成
+
+<!--
+Let us make our x_gradient more generic.
+It should work with any image views, as long as they have the same number of channels.
+The gradient operation is to be computed for each channel independently.
+Here is how the new interface looks like:
+-->
+
+`x_gradient`のコードをよりジェネリックにしていきましょう。
+まず、同じChannel数をもつどのようなImage Viewでも動作すべきです。
+gradientの計算は各Channelが独立に計算されます。
+新しいインタフェースがどのようになるのか示します。
+
+```cpp
+template <typename SrcView, typename DstView>
+void x_gradient(const SrcView& src, const DstView& dst) {
+    gil_function_requires<ImageViewConcept<SrcView> >();
+    gil_function_requires<MutableImageViewConcept<DstView> >();
+    gil_function_requires<ColorSpacesCompatibleConcept<
+                                typename color_space_type<SrcView>::type,
+                                typename color_space_type<DstView>::type> >();
+
+    ... // compute the gradient
+}
+```
+
+<!--
+The new algorithm now takes the types of the input and output image views as template parameters.
+That allows using both built-in GIL image views, as well as any user-defined image view classes.
+The first three lines are optional;
+they use boost::concept_check to ensure that the two arguments are valid GIL image views, that the second one is mutable and that their color spaces are compatible (i.e. have the same set of channels).
+-->
+
+この新しいアルゴリズムでは、テンプレートのパラメータとして入力のImage Viewと出力のImage Viewを取ります。
+このアルゴリズムは、GILのビルトインImage Viewとユーザ定義のImage Viewのどちらでも使うことができます。
+そして、上記の関数内の最初の3行は任意です。
+この3行では、2個の仮引数がそれぞれ有効なGIL Image Viewであること、2個目の仮引数のImage Viewがmutableであること、2個のImage ViewのColor Spaceの間に互換性があることを、`boost::concept_check`を用いて保証しています。
+
+<!--
+GIL does not require using its own built-in constructs.
+You are free to use your own channels, color spaces, iterators, locators, views and images.
+However, to work with the rest of GIL they have to satisfy a set of requirements; in other words, they have to model the corresponding GIL concept.
+GIL's concepts are defined in the user guide.
+-->
+
+GILは、ビルトインコンストラクトの中でも、`boost::concept_check`の使用を要求していません。
+ユーザが、独自のChannel、Color Space、Iterator、Locator、View、Imageを使うことは自由です。
+しかし、その他の部分を担うGILと一緒に動作させるためには、独自のコンストラクトは`boost::concept_check`による要求のセットを満たさなければなりません。
+言い換えると、独自のコンストラクトは、関連するGIL Conceptに基づいたModelでなければなりません。
+GIL Conceptはユーザガイドの中で定義されています。
+
+<!--
+One of the biggest drawbacks of using templates and generic programming in C++ is that compile errors can be very difficult to comprehend.
+This is a side-effect of the lack of early type checking - a generic argument may not satisfy the requirements of a function, but the incompatibility may be triggered deep into a nested call, in code unfamiliar and hardly related to the problem.
+GIL uses boost::concept_check to mitigate this problem.
+The above three lines of code check whether the template parameters are valid models of their corresponding concepts.
+If a model is incorrect, the compile error will be inside gil_function_requires, which is much closer to the problem and easier to track.
+Furthermore, such checks get compiled out and have zero performance overhead.
+The disadvantage of using concept checks is the sometimes severe impact they have on compile time.
+This is why GIL performs concept checks only in debug mode, and only if BOOST_GIL_USE_CONCEPT_CHECK is defined (off by default).
+-->
+
+C++のテンプレートとジェネリックプログラミングの最大の欠点のひとつは、コンパイルエラーの意味を読み取ることが非常に困難だということです。
+これは、型の判定が先延ばしされていることの副作用です。
+ジェネリックな引数が関数からの要求を満たしていない可能性がありますが、その不一致は、コードの中の見慣れない、問題とほとんど関係のない、幾重にもネストされた関数コールがきっかけとなって発生するのです。
+GILでは、この問題を軽減するために`boost::concept_check`を用います。
+先の3行は、テンプレートのパラメータが関連するConceptを満たした有効なModelであるかどうかを調べています。
+Modelが正しくない場合、問題に近く追跡が簡単な`gil_function_requires`のなかでコンパイルエラーが発生します。
+加えて、これらのチェックはコンパイル時に行われ、パフォーマンスへの影響はありません。
+コンセプトチェックを用いることの欠点は、コンパイル時間に深刻なインパクトを与える場合があるということです。
+このことから、GILはデバッグモードで且つ`BOOST_GIL_USE_CONCEPT_CHECK`が定義されている場合にだけコンセプトチェックを行います。
+(ちなみに、`BOOST_GIL_USE_CONCEPT_CHECK`はデフォルトでOFFです。)
+
+<!--
+The body of the generic function is very similar to that of the concrete one.
+The biggest difference is that we need to loop over the channels of the pixel and compute the gradient for each channel:
+-->
+
+```cpp
+template <typename SrcView, typename DstView>
+void x_gradient(const SrcView& src, const DstView& dst) {
+    for (int y=0; y<src.height(); ++y) {
+        typename SrcView::x_iterator src_it = src.row_begin(y);
+        typename DstView::x_iterator dst_it = dst.row_begin(y);
+
+        for (int x=1; x<src.width()-1; ++x)
+            for (int c=0; c<num_channels<SrcView>::value; ++c)
+                dst_it[x][c] = (src_it[x-1][c]- src_it[x+1][c])/2;
+    }
+}
+```
+<!--
+Having an explicit loop for each channel could be a performance problem. GIL allows us to abstract out such per-channel operations:
+-->
+```cpp
+template <typename Out>
+struct halfdiff_cast_channels {
+    template <typename T> Out operator()(const T& in1, const T& in2) const {
+        return Out((in1-in2)/2);
+    }
+};
+
+template <typename SrcView, typename DstView>
+void x_gradient(const SrcView& src, const DstView& dst) {
+    typedef typename channel_type<DstView>::type dst_channel_t;
+
+    for (int y=0; y<src.height(); ++y) {
+        typename SrcView::x_iterator src_it = src.row_begin(y);
+        typename DstView::x_iterator dst_it = dst.row_begin(y);
+
+        for (int x=1; x<src.width()-1; ++x)
+            static_transform(src_it[x-1], src_it[x+1], dst_it[x],
+                               halfdiff_cast_channels<dst_channel_t>());
+    }
+}
+```
+<!--
+static_transform is an example of a channel-level GIL algorithm.
+Other such algorithms are static_generate, static_fill and static_for_each.
+They are the channel-level equivalents of STL's generate, transform, fill and for_each respectively.
+GIL channel algorithms use static recursion to unroll the loops; they never loop over the channels explicitly.
+Note that sometimes modern compilers (at least Visual Studio 8) already unroll channel-level loops, such as the one above.
+However, another advantage of using GIL's channel-level algorithms is that they pair the channels semantically, not based on their order in memory.
+For example, the above example will properly match an RGB source with a BGR destination.
+-->
+<!--
+Here is how we can use our generic version with images of different types:
+-->
+```cpp
+// Calling with 16-bit grayscale data
+void XGradientGray16_Gray32(const unsigned short* src_pixels, ptrdiff_t src_row_bytes, int w, int h,
+                                  signed int* dst_pixels, ptrdiff_t dst_row_bytes) {
+    gray16c_view_t src=interleaved_view(w,h,(const gray16_pixel_t*)src_pixels,src_row_bytes);
+    gray32s_view_t dst=interleaved_view(w,h,(     gray32s_pixel_t*)dst_pixels,dst_row_bytes);
+    x_gradient(src,dst);
+}
+
+// Calling with 8-bit RGB data into 16-bit BGR
+void XGradientRGB8_BGR16(const unsigned char* src_pixels, ptrdiff_t src_row_bytes, int w, int h,
+                                 signed short* dst_pixels, ptrdiff_t dst_row_bytes) {
+    rgb8c_view_t  src = interleaved_view(w,h,(const rgb8_pixel_t*)src_pixels,src_row_bytes);
+    rgb16s_view_t dst = interleaved_view(w,h,(    rgb16s_pixel_t*)dst_pixels,dst_row_bytes);
+    x_gradient(src,dst);
+}
+
+// Either or both the source and the destination could be planar - the gradient code does not change
+void XGradientPlanarRGB8_RGB32(
+           const unsigned short* src_r, const unsigned short* src_g, const unsigned short* src_b,
+           ptrdiff_t src_row_bytes, int w, int h,
+           signed int* dst_pixels, ptrdiff_t dst_row_bytes) {
+    rgb16c_planar_view_t src=planar_rgb_view (w,h, src_r,src_g,src_b,         src_row_bytes);
+    rgb32s_view_t        dst=interleaved_view(w,h,(rgb32s_pixel_t*)dst_pixels,dst_row_bytes);
+    x_gradient(src,dst);
+}
+```
+
+<!--
+As these examples illustrate, both the source and the destination can be interleaved or planar, of any channel depth (assuming the destination channel is assignable to the source), and of any compatible color spaces.
+-->
+<!--
+GIL 2.1 can also natively represent images whose channels are not byte-aligned, such as 6-bit RGB222 image or a 1-bit Gray1 image.
+GIL algorithms apply to these images natively. See the design guide or sample files for more on using such images.
+-->
