@@ -386,7 +386,7 @@ This sample code also shows an alternative way of using pixel iterators - instea
 Using Locators
 -->
 
-### Locatorの使い方
+### <a name="section_02_03"> Locatorの使い方
 
 <!--
 Unfortunately this cache-friendly version requires the extra hassle of maintaining two separate iterators in the source view.
@@ -398,7 +398,8 @@ Such relative access can be done with GIL locators:
 ここでは、各Pixelにおいて、その上と下で隣接するPixelにアクセスしたいのです。
 そのような相対サクセスは、GILのLocatorによって行うことができます。
 
-```cpp
+{% highlight C++ %}
+
 void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
     gray8c_view_t::xy_locator src_loc = src.xy_at(0,1);
     for (int y=1; y<src.height()-1; ++y) {
@@ -412,7 +413,8 @@ void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
         src_loc+=point2<std::ptrdiff_t>(-src.width(),1);    // carriage return
     }
 }
-```
+
+{% endhighlight %}
 
 <!--
 The first line creates a locator pointing to the first pixel of the second row of the source view.
@@ -444,7 +446,8 @@ Locatorはとても軽量なオブジェクトであり、上記の例ではわ�
 しかし、Pixelの座標にかかわらず両隣のPixelとのオフセットは一定であることに着目しましょう。
 パフォーマンス向上のために、GILはこのオフセットをキャッシュして再利用することができるのです。
 
-```cpp
+{% highlight C++ %}
+
 void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
     gray8c_view_t::xy_locator src_loc = src.xy_at(0,1);
     gray8c_view_t::xy_locator::cached_location_t above = src_loc.cache_location(0,-1);
@@ -461,7 +464,8 @@ void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
         src_loc+=point2<std::ptrdiff_t>(-src.width(),1);
     }
 }
-```
+
+{% endhighlight %}
 
 <!--
 In this example "src_loc[above]" corresponds to a fast pointer indexing operation and the code is efficient.
