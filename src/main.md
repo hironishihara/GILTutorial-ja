@@ -282,9 +282,9 @@ In fact, in the above example the two iterator types are raw C pointers and thei
 -->
 
 このコードでは、各行の先頭を指すように初期化されたPixel Iteratorを使用します。
-GILのIteratorはランダムアクセス走査Iteratorです．
-もしランダムアクセスIteratorに詳しくないのであれば、ひとまずポインタだと考えておけば大丈夫でしょう。
-実際に、上記の例における2個のIteratorはCポインタであり、`operator[]`はポインタの高速なインデクシングを行う演算子です。
+GILのIteratorはランダムアクセス走査Iteratorです。
+もしランダムアクセスIteratorに詳しくないのであれば、ひとまずポインタだと考えておきましょう。
+事実、上記の例における2個のIteratorはCポインタであり、`operator[]`はポインタの高速なインデクシングを行う演算子です。
 
 <!--
 The code to compute gradient in the vertical direction is very similar:
@@ -310,9 +310,9 @@ GIL uses here a special step iterator class whose size is 8 bytes - it contains 
 Its operator[] multiplies the index by its step.
 -->
 
-各行のループを回すかわりに、各列のループを回してその中で垂直方向に移動するIteratorである`y_iterator`を作成します。
-このとき、垂直方向に隣接するPixel間の距離はその画像の1行分のバイト数と等しくなっており、シンプルなポインタを使用することはできません。
-ここでGILはサイズが8バイトの特別なステップIterator (Cポインタとステップ幅の値を含んでいます)を使用します。
+各行のループを回すかわりに各列のループを回し、その中で垂直方向に移動するIteratorである`y_iterator`を作成します。
+ただし、垂直方向に隣接するPixel間のメモリ上での距離はその画像の1行分のバイト数に等しいので、垂直方向Iteratorにシンプルなポインタを使用することはできません。
+ここでGILはサイズが8バイトの特別なステップIterator (Cポインタとステップ幅の値を含みます)を使用します。
 `operator[]`はインデクス値とステップ幅の値との積を求めます。
 
 <!--
@@ -346,3 +346,90 @@ This sample code also shows an alternative way of using pixel iterators - instea
 -->
 
 このサンプルコードでは、`operator[]`を通してインクリメントと間接参照を行う方法のかわりに、Pixel Iteratorを用いる代替手段を示しています。
+
+<!--
+Using Locators
+-->
+
+### Locatorの使い方
+
+<!--
+Unfortunately this cache-friendly version requires the extra hassle of maintaining two separate iterators in the source view.
+For every pixel, we want to access its neighbors above and below it.
+Such relative access can be done with GIL locators:
+-->
+
+残念なことに、このキャッシュフレンドリなバージョンでは、入力Viewの中で2個のIteratorをそれぞれ扱うという余計な手間が掛かります。
+ここでは、各Pixelにおいて、その上と下で隣接するPixelにアクセスしたいのです。
+そのような相対サクセスは、GILのLocatorによって行うことができます。
+
+```cpp
+void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    gray8c_view_t::xy_locator src_loc = src.xy_at(0,1);
+    for (int y=1; y<src.height()-1; ++y) {
+        gray8s_view_t::x_iterator dst_it  = dst.row_begin(y);
+
+        for (int x=0; x<src.width(); ++x) {
+            (*dst_it) = (src_loc(0,-1) - src_loc(0,1)) / 2;
+            ++dst_it;
+            ++src_loc.x();                  // each dimension can be advanced separately
+        }
+        src_loc+=point2<std::ptrdiff_t>(-src.width(),1);    // carriage return
+    }
+}
+```
+
+<!--
+The first line creates a locator pointing to the first pixel of the second row of the source view.
+A GIL pixel locator is very similar to an iterator, except that it can move both horizontally and vertically.
+src_loc.x() and src_loc.y() return references to a horizontal and a vertical iterator respectively, which can be used to move the locator along the desired dimension, as shown above.
+Additionally, the locator can be advanced in both dimensions simultaneously using its operator+= and operator-=.
+Similar to image views, locators provide binary operator() which returns a reference to a pixel with a relative offset to the current locator position.
+For example, src_loc(0,1) returns a reference to the neighbor below the current pixel.
+Locators are very lightweight objects - in the above example the locator has a size of 8 bytes -
+it consists of a raw pointer to the current pixel and an int indicating the number of bytes from one row to the next (which is the step when moving vertically).
+The call to ++src_loc.x() corresponds to a single C pointer increment.
+However, the example above performs more computations than necessary.
+The code src_loc(0,1) has to compute the offset of the pixel in two dimensions, which is slow.
+Notice though that the offset of the two neighbors is the same, regardless of the pixel location.
+To improve the performance, GIL can cache and reuse this offset:
+-->
+
+最初の行では、入力Viewの2行目の先頭を指し示すLocatorを作成します。
+GILのPixel Locatorは、水平方向と垂直方向のどちらにも移動できること以外は、Iteratorとよく似ています。
+上記のコードにある通り、`src_loc.x()`と`src_loc.y()`はそれぞれ水平方向Iteratorの参照と垂直方向Iteratorの参照をそれぞれ返すので、それらを使ってLocatorを好きな方向に動かすことができます。
+加えて、Locatorは`operator+=`と`operator-=`を用いることで、両方向へ同時に移動することが出来ます。
+Image Viewと同じように、Locatorは現在位置を基準にした相対的オフセットで指定されるPixelへの参照を返す`operator()`を提供します。
+例えば、`src_loc(0,1)`は現在指し示しているPixelの下側に隣接するPixelの参照を返します。
+Locatorはとても軽量なオブジェクトであり、上記の例ではわずか8バイトです。
+現在のPixelを指す生ポインタと、ある行から次の行までのバイト数を表す整数型(垂直移動の際のステップ数として使用します)で構成されています。
+`++src_loc.x()`の呼び出しは、Cポインタのインクリメント1回に相当します。
+ところが、上記の例の場合、必要以上の計算が行われてしまっています。
+`src_loc(0,1)`のコードは2方向のオフセットを計算しなければならず、低速なのです。
+しかし、Pixelの座標にかかわらず両隣のPixelとのオフセットは一定であることに着目しましょう。
+パフォーマンス向上のために、GILはこのオフセットをキャッシュして再利用することができるのです。
+
+```cpp
+void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    gray8c_view_t::xy_locator src_loc = src.xy_at(0,1);
+    gray8c_view_t::xy_locator::cached_location_t above = src_loc.cache_location(0,-1);
+    gray8c_view_t::xy_locator::cached_location_t below = src_loc.cache_location(0, 1);
+
+    for (int y=1; y<src.height()-1; ++y) {
+        gray8s_view_t::x_iterator dst_it = dst.row_begin(y);
+
+        for (int x=0; x<src.width(); ++x) {
+            (*dst_it) = (src_loc[above] - src_loc[below])/2;
+            ++dst_it;
+            ++src_loc.x();
+        }
+        src_loc+=point2<std::ptrdiff_t>(-src.width(),1);
+    }
+}
+```
+
+<!--
+In this example "src_loc[above]" corresponds to a fast pointer indexing operation and the code is efficient.
+-->
+
+この例における"`src_loc[above]``"はポインタの高速なインデクシングに相当しており、このコードは効率的です。
