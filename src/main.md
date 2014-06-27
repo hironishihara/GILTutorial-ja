@@ -633,3 +633,80 @@ See the design guide or sample files for more on using such images.
 GIL 2.1は、6ビットRGB222 Imageや1ビットGray1 Imageといったバイト単位ではないChannelをもつImageについてもネイティブに扱うことができます。
 GILのアルゴリズムは、ネイティブにこれらのImageへ適用することができます。
 このようなImageの用例ついては、デザインガイドやサンプルファイルを参照ください。
+
+<!--
+Image View Transformations
+-->
+
+### Image Viewの変換
+
+<!--
+One way to compute the y-gradient is to rotate the image by 90 degrees, compute the x-gradient and rotate the result back.
+Here is how to do this in GIL:
+-->
+
+`y_gradient`を計算する方法のひとつに、画像を90度回転させて`x_gradient`を計算し、その結果を逆方向に90度回転させて元の向きに戻すというものがあります。
+それをGILでどのように行うかを次に示します。
+
+```cpp
+template <typename SrcView, typename DstView>
+void y_gradient(const SrcView& src, const DstView& dst) {
+    x_gradient(rotated90ccw_view(src), rotated90ccw_view(dst));
+}
+```
+
+<!--
+rotated90ccw_view takes an image view and returns an image view representing 90-degrees counter-clockwise rotation of its input.
+It is an example of a GIL view transformation function.
+GIL provides a variety of transformation functions that can perform any axis-aligned rotation, transpose the view, flip it vertically or horizontally, extract a rectangular subimage, perform color conversion, subsample view, etc.
+The view transformation functions are fast and shallow - they don't copy the pixels, they just change the "coordinate system" of accessing the pixels.
+rotated90cw_view, for example, returns a view whose horizontal iterators are the vertical iterators of the original view.
+The above code to compute y_gradient is slow because of the memory access pattern; using rotated90cw_view does not make it any slower.
+-->
+
+`rotated90ccw_view`は、あるImage Viewを引数に取り、それを90度反時計回りに回転させたImage Viewを返します。
+これは、GILのView変換関数の一例です。
+GILは、軸に沿った回転、転置、垂直方向または水平方向の反転、矩形領域の切り出し、色空間の変換、サブサンプリングなど、様々なView変換関数を提供します。
+View変換関数は浅く、高速です。
+View変換関数では、Pixelのコピーは行わず、Pixelにアクセスする際の"座標系"を変更するだけです。
+例を挙げると、`rotated90cw_view`はオリジナルのViewの垂直方向Iteratorを水平方向IteratorとしてもつViewを返します。
+先に挙げた`y_gradient`を計算するコードはメモリのアクセスパターンが原因で低速でしたが、`rotated90cw_view`を用いたコードは全く遅くなりません。
+
+<!--
+Another example: suppose we want to compute the gradient of the N-th channel of a color image.
+Here is how to do that:
+-->
+
+もうひとつの例として、カラーImageのN番目Channelのgradientを計算してみましょう。
+
+```cpp
+template <typename SrcView, typename DstView>
+void nth_channel_x_gradient(const SrcView& src, int n, const DstView& dst) {
+    x_gradient(nth_channel_view(src, n), dst);
+}
+```
+
+<!--
+nth_channel_view is a view transformation function that takes any view and returns a single-channel (grayscale) view of its N-th channel.
+For interleaved RGB view, for example, the returned view is a step view - a view whose horizontal iterator skips over two channels when incremented.
+If applied on a planar RGB view, the returned type is a simple grayscale view whose horizontal iterator is a C pointer.
+Image view transformation functions can be piped together. For example, to compute the y gradient of the second channel of the even pixels in the view, use:
+-->
+
+`nth_channel_view`は、あらゆるViewを引数に取り、そのN番目Channelだけをもつ単Channel (グレイスケール) Viewとして返すView変換関数です。
+インタリーブRGB Viewの場合、この関数から返されるViewはインクリメントされたときに2つのChannelを飛び越す水平方向IteratorをもつスキップViewです。
+プラナーRGB Viewに用いられた場合には、Cポインタが水平方向Iteratorになっている、シンプルなグレイスケールViewが返されます。
+View変換関数は、互いを連結させることが可能です。
+例えば、Viewの2番目ChannelのY方向gradientを計算する場合、次のようにします。
+
+```cpp
+y_gradient(subsampled_view(nth_channel_view(src, 1), 2,2), dst);
+```
+
+<!--
+GIL can sometimes simplify piped views.
+For example, two nested subsampled views (views that skip over pixels in X and in Y) can be represented as a single subsampled view whose step is the product of the steps of the two views.
+-->
+
+GILでは、連結された複数のViewを簡略化できる場合があります。
+例を挙げると、入れ子になった2つのサブサンプルView (X軸方向でスキップするViewとY軸方向でスキップするView)は、その2つのViewのステップの積をステップとする1つのサブサンプルViewに置き換えることが可能です。
