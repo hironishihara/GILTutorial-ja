@@ -491,7 +491,8 @@ Here is how the new interface looks like:
 gradientの計算は各Channelが独立に計算されます。
 新しいインタフェースがどのようになるのか示します。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void x_gradient(const SrcView& src, const DstView& dst) {
     gil_function_requires<ImageViewConcept<SrcView> >();
@@ -502,7 +503,8 @@ void x_gradient(const SrcView& src, const DstView& dst) {
 
     ... // compute the gradient
 }
-```
+
+{% endhighlight %}
 
 <!--
 The new algorithm now takes the types of the input and output image views as template parameters.
@@ -559,7 +561,8 @@ The biggest difference is that we need to loop over the channels of the pixel an
 ジェネリックな関数の中身は、型が決まっている一般の関数の中身とよく似ています。
 もっとも大きな違いは、Pixelの各Channelをループして各Channel毎にgradientの計算が必要だということです。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void x_gradient(const SrcView& src, const DstView& dst) {
     for (int y=0; y<src.height(); ++y) {
@@ -571,7 +574,8 @@ void x_gradient(const SrcView& src, const DstView& dst) {
                 dst_it[x][c] = (src_it[x-1][c]- src_it[x+1][c])/2;
     }
 }
-```
+
+{% endhighlight %}
 
 <!--
 Having an explicit loop for each channel could be a performance problem.
@@ -581,7 +585,8 @@ GIL allows us to abstract out such per-channel operations:
 単純な各Channelのループは、パフォーマンスの問題になる可能性があります。
 GILは、各Channelの操作を次のように抽象化することができます。
 
-```cpp
+{% highlight C++ %}
+
 template <typename Out>
 struct halfdiff_cast_channels {
     template <typename T> Out operator()(const T& in1, const T& in2) const {
@@ -602,7 +607,8 @@ void x_gradient(const SrcView& src, const DstView& dst) {
                                halfdiff_cast_channels<dst_channel_t>());
     }
 }
-```
+
+{% endhighlight %}
 
 <!--
 static_transform is an example of a channel-level GIL algorithm.
@@ -629,7 +635,8 @@ Here is how we can use our generic version with images of different types:
 
 型が異なるImageに対して、ジェネリックなコードをどのように用いるのか示します。
 
-```cpp
+{% highlight C++ %}
+
 // Calling with 16-bit grayscale data
 void XGradientGray16_Gray32(const unsigned short* src_pixels, ptrdiff_t src_row_bytes, int w, int h,
                                   signed int* dst_pixels, ptrdiff_t dst_row_bytes) {
@@ -655,7 +662,8 @@ void XGradientPlanarRGB8_RGB32(
     rgb32s_view_t        dst=interleaved_view(w,h,(rgb32s_pixel_t*)dst_pixels,dst_row_bytes);
     x_gradient(src,dst);
 }
-```
+
+{% endhighlight %}
 
 <!--
 As these examples illustrate, both the source and the destination can be interleaved or planar, of any channel depth (assuming the destination channel is assignable to the source), and of any compatible color spaces.
@@ -687,12 +695,14 @@ Here is how to do this in GIL:
 `y_gradient`を計算する方法のひとつに、画像を90度回転させて`x_gradient`を計算し、その結果を逆方向に90度回転させて元の向きに戻すというものがあります。
 それをGILでどのように行うかを次に示します。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void y_gradient(const SrcView& src, const DstView& dst) {
     x_gradient(rotated90ccw_view(src), rotated90ccw_view(dst));
 }
-```
+
+{% endhighlight %}
 
 <!--
 rotated90ccw_view takes an image view and returns an image view representing 90-degrees counter-clockwise rotation of its input.
@@ -718,12 +728,14 @@ Here is how to do that:
 
 もうひとつの例として、カラーImageのN番目Channelのgradientを計算してみましょう。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void nth_channel_x_gradient(const SrcView& src, int n, const DstView& dst) {
     x_gradient(nth_channel_view(src, n), dst);
 }
-```
+
+{% endhighlight %}
 
 <!--
 nth_channel_view is a view transformation function that takes any view and returns a single-channel (grayscale) view of its N-th channel.
@@ -738,9 +750,11 @@ Image view transformation functions can be piped together. For example, to compu
 View変換関数は、互いを連結させることが可能です。
 例えば、Viewの2番目ChannelのY方向gradientを計算する場合、次のようにします。
 
-```cpp
+{% highlight C++ %}
+
 y_gradient(subsampled_view(nth_channel_view(src, 1), 2,2), dst);
-```
+
+{% endhighlight %}
 
 <!--
 GIL can sometimes simplify piped views.
