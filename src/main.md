@@ -175,8 +175,8 @@ Whether a view is mutable or read-only (immutable) is a property of the view typ
 GILはImageとImage Viewを区別します。
 GILのImage Viewは、長方形格子状のPixelの範囲を指し示す、浅く軽いViewです。
 ViewはPixelへのアクセスを提供しますが、Pixelそのものではありません。
-ViewのコピーコンストラクションはPixelのディープコピーではありません
-Image Viewに付加されたconst性はPixelまで伝播しないので、常にconst参照で使用すべきです。
+ViewのコピーコンストラクションはPixelのディープコピーではありません。
+Image Viewに付加されたconst性はPixelまで伝播しないので、Image Viewは常にconst参照で使用すべきです。
 Viewがmutableであるかread-only (immutable)であるかは、Viewの型のプロパティです。
 
 <!--
@@ -198,8 +198,8 @@ STL algorithms operate on ranges, just like GIL algorithms operate on image view
 
 ほとんどのGILアルゴリズムはImage Viewの上で動作します。Imageが必要になることはめったにありません。
 GILの設計は、STLの設計とよく似ています。
-GILのImageはSTLにおける`std::vector`などといったコンテナに相当し、GILのImage ViewはSTLにおけるRange(しばしば、`begin()`と`end()`のようなIteratorの組で表現されています)に対応します。
-STLアルゴリズムがRangeの上で動作するのと同じ様に、GILアルゴリズムはImage Viewの上で動作します。
+GILのImageはSTLにおける`std::vector`などといったコンテナに相当し、GILのImage ViewはSTLにおけるRange(しばしば、`begin()`と`end()`のようなIteratorの組で表現されています)に相当します。
+STLアルゴリズムがRangeの上で動作するのと同じ様に、GILアルゴリズムはImage Viewの上で動作するのです。
 
 <!--
 GIL's image views can be constructed from raw data - the dimensions, the number of bytes per row and the pixels, which for chunky views are represented with one pointer.
@@ -223,7 +223,7 @@ This glue code is very fast and views are lightweight - in the above example the
 They consist of a pointer to the top left pixel and three integers - the width, height, and number of bytes per row.
 -->
 
-このグルーコードはとても高速であり、2つのViewはとても軽量(上記の例では16バイトです)です。
+このグルーコードはとても高速であり、2つのViewはとても軽量(上記の例では16バイト)です。
 それぞれのViewは、左上隅のPixelを示すポインタと3個の整数(width、height、1行あたりのバイト数)から構成されています。
 
 
@@ -256,11 +256,11 @@ While the above code is easy to read, it is not very fast, because the binary op
 Here is a faster version of the above:
 -->
 
-Image Viewの`operator(x,y)`を使用して与えられた座標のPixel参照を取得し、その両隣のPixelの差分の1/2をそこに代入します。
+Image Viewの`operator(x,y)`を使用して与えられた座標のPixel参照を取得し、そこに両隣のPixelの差分の1/2を代入します。
 `operator()`はグレイスケールPixelの参照を返します。
 グレイスケールPixelはそのChannel (`src`における`unsigned char`)と変換可能であり、Channelからのコピーコンストラクションが可能です。(これが可能なのはグレイスケールPixelだけです。)
-上記のコードは読みやすいけれど、それほど高速ではありません。というのも、実行ファイル内の`operator()`が2次元格子上の座標を算出する際に和と積を用いているからです。
-上記のコードをより高速にしたバージョンを次に示します。
+上記のコードは読みやすいのですが、それほど高速ではありません。というのも、実行ファイル内の`operator()`が2次元格子上の座標を算出する際に和と積を用いているからです。
+上記のコードをより高速にしたバージョンは次の様になります。
 
 ```cpp
 void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -290,7 +290,7 @@ GILのIteratorはランダムアクセス走査Iteratorです。
 The code to compute gradient in the vertical direction is very similar:
 -->
 
-垂直方向のgradientを計算するコードはとてもよく似ています。
+垂直方向のgradientを計算するコードも、上記のコードにとてもよく似ています。
 
 ```cpp
 void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -359,9 +359,9 @@ For every pixel, we want to access its neighbors above and below it.
 Such relative access can be done with GIL locators:
 -->
 
-残念なことに、このキャッシュフレンドリなバージョンでは、入力Viewの中で2個のIteratorをそれぞれ扱うという余計な手間が掛かります。
-ここでは、各Pixelにおいて、その上と下で隣接するPixelにアクセスしたいのです。
-そのような相対サクセスは、GILのLocatorによって行うことができます。
+残念なことに、このキャッシュフレンドリなバージョンでは、入力Viewの中で2個のIteratorを扱うという余計な手間が掛かっています。
+ここで私たちが行いたいのは、各Pixelの上下に隣接するPixelへのアクセスです。
+そういった相対アクセスは、GILのLocatorによって行うことができます。
 
 ```cpp
 void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
@@ -395,7 +395,7 @@ Notice though that the offset of the two neighbors is the same, regardless of th
 To improve the performance, GIL can cache and reuse this offset:
 -->
 
-最初の行では、入力Viewの2行目の先頭を指し示すLocatorを作成します。
+最初の行では、入力Viewの2行目の先頭を指し示すLocatorを作成しています。
 GILのPixel Locatorは、水平方向と垂直方向のどちらにも移動できること以外は、Iteratorとよく似ています。
 上記のコードにある通り、`src_loc.x()`と`src_loc.y()`はそれぞれ水平方向Iteratorの参照と垂直方向Iteratorの参照をそれぞれ返すので、それらを使ってLocatorを好きな方向に動かすことができます。
 加えて、Locatorは`operator+=`と`operator-=`を用いることで、両方向へ同時に移動することが出来ます。
@@ -404,9 +404,9 @@ Image Viewと同じように、Locatorは現在位置を基準にした相対的
 Locatorはとても軽量なオブジェクトであり、上記の例ではわずか8バイトです。
 現在のPixelを指す生ポインタと、ある行から次の行までのバイト数を表す整数型(垂直移動の際のステップ数として使用します)で構成されています。
 `++src_loc.x()`の呼び出しは、Cポインタのインクリメント1回に相当します。
-ところが、上記の例の場合、必要以上の計算が行われてしまっています。
-`src_loc(0,1)`のコードは2方向のオフセットを計算しなければならず、低速なのです。
-しかし、Pixelの座標にかかわらず両隣のPixelとのオフセットは一定であることに着目しましょう。
+ところが、上記のコードの内部では必要以上の計算が行われてしまっています。
+`src_loc(0,1)`のコードは2方向のPixelオフセットを計算をしなければならず、低速なのです。
+と言いつつ、両隣のPixelとのオフセットはPixelの座標にかかわらず一定であることに着目しましょう。
 パフォーマンス向上のために、GILはこのオフセットをキャッシュして再利用することができるのです。
 
 ```cpp
