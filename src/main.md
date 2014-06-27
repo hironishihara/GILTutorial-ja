@@ -517,6 +517,9 @@ The body of the generic function is very similar to that of the concrete one.
 The biggest difference is that we need to loop over the channels of the pixel and compute the gradient for each channel:
 -->
 
+ジェネリックな関数の中身は、型が決まっている一般の関数の中身とよく似ています。
+もっとも大きな違いは、Pixelの各Channelをループして各Channel毎にgradientの計算が必要だということです。
+
 ```cpp
 template <typename SrcView, typename DstView>
 void x_gradient(const SrcView& src, const DstView& dst) {
@@ -530,9 +533,15 @@ void x_gradient(const SrcView& src, const DstView& dst) {
     }
 }
 ```
+
 <!--
-Having an explicit loop for each channel could be a performance problem. GIL allows us to abstract out such per-channel operations:
+Having an explicit loop for each channel could be a performance problem.
+GIL allows us to abstract out such per-channel operations:
 -->
+
+単純な各Channelのループは、パフォーマンスの問題になる可能性があります。
+GILは、各Channelの操作を次のように抽象化することができます。
+
 ```cpp
 template <typename Out>
 struct halfdiff_cast_channels {
@@ -555,6 +564,7 @@ void x_gradient(const SrcView& src, const DstView& dst) {
     }
 }
 ```
+
 <!--
 static_transform is an example of a channel-level GIL algorithm.
 Other such algorithms are static_generate, static_fill and static_for_each.
@@ -564,9 +574,22 @@ Note that sometimes modern compilers (at least Visual Studio 8) already unroll c
 However, another advantage of using GIL's channel-level algorithms is that they pair the channels semantically, not based on their order in memory.
 For example, the above example will properly match an RGB source with a BGR destination.
 -->
+
+`static_transform`はChannelレベルのGILアルゴリズムのひとつです。
+この他には、`static_genrerate`、`static_fill`、`static_for_each`といったアルゴリズムがあります。
+これらのアルゴリズムは、`generate`、`transform`、`fill`、`for_each`といったSTLアルゴリズムと同等なChannelレベルのアルゴリズムです。
+GILのChannelアルゴリズムは、ループを回すことがないように、静的な再帰を用います。
+これらのアルゴリズムは、各Channelの単純なループを決して行いません。
+上記の例などであれば、モダンなコンパイラ(たとえVisual Studio 8であっても)はChannelレベルのループを行うことはないでしょう。
+しかし、GILのChannelレベルのアルゴリズムを用いるもうひとつの利点は、メモリ上での順序ではなくセマンティックなChannel順序を用いるということです。
+例を挙げると、上記のコードは入力ViewがRGBで出力ViewがBGRであっても問題なく適合します。
+
 <!--
 Here is how we can use our generic version with images of different types:
 -->
+
+型が異なるImageに対して、ジェネリックなコードをどのように用いるのか示します。
+
 ```cpp
 // Calling with 16-bit grayscale data
 void XGradientGray16_Gray32(const unsigned short* src_pixels, ptrdiff_t src_row_bytes, int w, int h,
@@ -598,7 +621,15 @@ void XGradientPlanarRGB8_RGB32(
 <!--
 As these examples illustrate, both the source and the destination can be interleaved or planar, of any channel depth (assuming the destination channel is assignable to the source), and of any compatible color spaces.
 -->
+
+これらの例が示す通り、入力と出力はともにインタリーブ形式であってもプラナー形式であっても構いませんし、それらのChannle深度は(入力から出力に代入可能であれば)どのようであれ構いませんし，それらのColor Spaceは(互換性さえあれば)どのようであっても構いません。
+
 <!--
 GIL 2.1 can also natively represent images whose channels are not byte-aligned, such as 6-bit RGB222 image or a 1-bit Gray1 image.
-GIL algorithms apply to these images natively. See the design guide or sample files for more on using such images.
+GIL algorithms apply to these images natively.
+See the design guide or sample files for more on using such images.
 -->
+
+GIL 2.1は、6ビットRGB222 Imageや1ビットGray1 Imageといったバイト単位ではないChannelをもつImageについてもネイティブに扱うことができます。
+GILのアルゴリズムは、ネイティブにこれらのImageへ適用することができます。
+このようなImageの用例ついては、デザインガイドやサンプルファイルを参照ください。
