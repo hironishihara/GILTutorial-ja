@@ -834,3 +834,63 @@ GILは、Image ViewにおけるSTLの`std::for_each`や`std::transform`相当の
 また、ジェネリック関数に対してPixel参照の代わりにPixel Locatorを渡す、`for_each_pixel_positions`や`transform_pixel_positions`も提供します。
 このことは、渡されたPixel Locatorを通じて隣接Pixelを使用する、さらに強力な関数を可能にします。
 GILアルゴリズムは、(1次元Pixel Iteratorを用いた1段のループではなく)より効率的な2段にネストされたループを用いて反復を行います。
+
+<!--
+Color Conversion
+-->
+
+### 色変換
+
+<!--
+Instead of computing the gradient of each color plane of an image, we often want to compute the gradient of the luminosity.
+In other words, we want to convert the color image to grayscale and compute the gradient of the result.
+Here how to compute the luminosity gradient of a 32-bit float RGB image:
+-->
+
+画像の各色平面のgradientを計算するのではなく、明度のgradientを計算したい場合も多々あります。
+言い換えると、カラー画像からクレイスケール画像に変換して、その結果のgradientを計算したい場合です。
+32ビット浮動小数点型RGB画像の明度のgradientをいかに算出するか、次に示します。
+
+```cpp
+void x_gradient_rgb_luminosity(const rgb32fc_view_t& src, const gray8s_view_t& dst) {
+    x_gradient(color_converted_view<gray8_pixel_t>(src), dst);
+}
+```
+<!--
+color_converted_view is a GIL view transformation function that takes any image view and returns a view in a target color space and channel depth (specified as template parameters).
+In our example, it constructs an 8-bit integer grayscale view over 32-bit float RGB pixels.
+Like all other view transformation functions, color_converted_view is very fast and shallow.
+It doesn't copy the data or perform any color conversion.
+Instead it returns a view that performs color conversion every time its pixels are accessed.
+-->
+
+`color_converted_view`は、あらゆるImage Viewを引数に取り、(テンプレートのパラメータで指定した)目標のColor SpaceとChannel深度をもったViewを返す、GILのView変換関数です。
+ここで示した例では、`color_converted_view`は32ビット浮動小数点型RGB Pixelを指すViewから8ビット整数型グレイスケールViewを構築します。
+他のView変換関数と同様に、`color_converted_view`は浅く、非常に高速です。
+この関数はデータのコピーも色変換も行いません。
+そのかわりに、この関数はPixelへのアクセス毎にそのPixelの色変換を実行するViewを返します。
+
+<!--
+In the generic version of this algorithm we might like to convert the color space to grayscale, but keep the channel depth the same.
+We do that by constructing the type of a GIL grayscale pixel with the same channel as the source, and color convert to that pixel type:
+-->
+
+このアルゴリズムのジェネリックなバージョンで、Color Spaceをグレイスケールに変換してもそのChannel深度は変更しないほうがよいでしょう。
+入力画像と同じChannel型をもつグレイスケールPixelを構築してそのPixelへ色変換することで、これを実現します。
+
+```cpp
+template <typename SrcView, typename DstView>
+void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
+    typedef pixel<typename channel_type<SrcView>::type, gray_layout_t> gray_pixel_t;
+    x_gradient(color_converted_view<gray_pixel_t>(src), dst);
+}
+```
+
+<!--
+When the destination color space and channel type happens to be the same as the source one, color conversion is unnecessary.
+GIL detects this case and avoids calling the color conversion code at all - i.e. color_converted_view returns back the source view unchanged.
+-->
+
+目標のColor SpaceとChannel型が偶然にも入力のそれらと同じだった場合、色変換は必要ありません。
+GILはこのようなケースを検出し、色変換のコードが呼び出されるのを完璧に回避します。
+つまり、このような場合の`color_converted_view`は、入力Viewそのものを返すのです。
