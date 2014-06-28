@@ -899,7 +899,7 @@ GILアルゴリズムは、(1次元Pixel Iteratorを用いた1段のループで
 Color Conversion
 -->
 
-### 色変換
+### <a name="section_02_08"> 色変換
 
 <!--
 Instead of computing the gradient of each color plane of an image, we often want to compute the gradient of the luminosity.
@@ -911,11 +911,14 @@ Here how to compute the luminosity gradient of a 32-bit float RGB image:
 言い換えると、カラー画像からクレイスケール画像に変換して、その結果のgradientを計算したい場合です。
 32ビット浮動小数点型RGB画像の明度のgradientをいかに算出するか、次に示します。
 
-```cpp
+{% highlight C++ %}
+
 void x_gradient_rgb_luminosity(const rgb32fc_view_t& src, const gray8s_view_t& dst) {
     x_gradient(color_converted_view<gray8_pixel_t>(src), dst);
 }
-```
+
+{% endhighlight %}
+
 <!--
 color_converted_view is a GIL view transformation function that takes any image view and returns a view in a target color space and channel depth (specified as template parameters).
 In our example, it constructs an 8-bit integer grayscale view over 32-bit float RGB pixels.
@@ -938,13 +941,15 @@ We do that by constructing the type of a GIL grayscale pixel with the same chann
 このアルゴリズムのジェネリックなバージョンで、Color Spaceをグレイスケールに変換してもそのChannel深度は変更しないほうがよいでしょう。
 入力画像と同じChannel型をもつグレイスケールPixelを構築してそのPixelへ色変換することで、これを実現します。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
     typedef pixel<typename channel_type<SrcView>::type, gray_layout_t> gray_pixel_t;
     x_gradient(color_converted_view<gray_pixel_t>(src), dst);
 }
-```
+
+{% endhighlight %}
 
 <!--
 When the destination color space and channel type happens to be the same as the source one, color conversion is unnecessary.
