@@ -726,8 +726,8 @@ The way to do that in GIL is to write a version that works for every pixel, but 
 -->
 
 ここでもう一度`x_gradient`の話に戻りましょう。
-多くのImage Viewアルゴリズムでは各Pixelに同じ処理を行います。そして、GILはそのような一連の手順を抽象化しています。
-振り返ってみると、先ほどの`x_gradient`アルゴリズムでは、画像の最初の列にあるPixelと最後の列にあるPixelについてはスキップするという、変則的なアクセスパターンを用いていました。
+多くのImage Viewアルゴリズムでは各Pixelに同じ処理を行います。GILは、そのような一連の手順を抽象化します。
+振り返ってみると、先ほどの`x_gradient`アルゴリズムでは、画像の最初の列にあるPixelと最後の列にあるPixelについてはスキップするという変則的なアクセスパターンを用いていました。
 これをどのようにして規則的なアクセスパターンに書き直すことができるのかを知っておくのも有意義でしょう。
 GILでこれを実現するには、View内の全てのPixelに対して処理を行うバージョンを作成し、それを最初の列と最後の列を除いたサブイメージに対して適用するという方法をとります。
 
@@ -769,7 +769,7 @@ Now that x_gradient_unguarded operates on every pixel, we can rewrite it more co
 void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
     gray8c_view_t::iterator src_it = src.begin();
     for (gray8s_view_t::iterator dst_it = dst.begin(); dst_it!=dst.end(); ++dst_it, ++src_it)
-      *dst_it = (src_it.x()[-1] - src_it.x()[1]) / 2;
+      * dst_it = (src_it.x()[-1] - src_it.x()[1]) / 2;
 }
 ```
 
@@ -809,8 +809,8 @@ If we abstract that operation in a function object, we can use GIL's transform_p
 
 GILは、STL-Styleの多くのアルゴリズムを提供しています。
 例えば、`std::transform`は、出力コンテナの指定範囲にある各要素に対して、対応する入力要素にジェネリック関数を適用した結果をセットするSTLアルゴリズムです。
-GILの例では、出力Image Viewの各Pixelに対して、それに対応する入力Pixelに両隣のPixelの差分の1/2を割り当てていきます。
-計算部分を関数オブジェクトとして抽象化すると、この処理はGILの`transform_pixel_position`を用いて次のように行うことができます。
+これまで挙げてきた例では、出力Image Viewの各Pixelに対して、対応する入力Pixelの両隣のPixelの差分の1/2を割り当てる処理を行ってきました。
+計算部分を関数オブジェクトとして抽象化すると、この処理はGILの`transform_pixel_position`を用いて次のように書くことができます。
 
 ```cpp
 struct half_x_difference {
