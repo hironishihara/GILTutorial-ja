@@ -855,7 +855,7 @@ GILのImage Viewは、View内の全てのPixelを左から右かつ上から下�
 STL Equivalent Algorithms
 -->
 
-### STL-Styleアルゴリズム
+### <a name="section_02_07"> STL-Styleアルゴリズム
 
 <!--
 GIL provides STL equivalents of many algorithms.
@@ -869,7 +869,8 @@ GILは、STL-Styleの多くのアルゴリズムを提供しています。
 GILの例では、出力Image Viewの各Pixelに対して、それに対応する入力Pixelに両隣のPixelの差分の1/2を割り当てていきます。
 計算部分を関数オブジェクトとして抽象化すると、この処理はGILの`transform_pixel_position`を用いて次のように行うことができます。
 
-```cpp
+{% highlight C++ %}
+
 struct half_x_difference {
     int operator()(const gray8c_loc_t& src_loc) const {
         return (src_loc.x()[-1] - src_loc.x()[1]) / 2;
@@ -879,7 +880,9 @@ struct half_x_difference {
 void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
     transform_pixel_positions(src, dst, half_x_difference());
 }
-```
+
+{% endhighlight %}
+
 <!--
 GIL provides the algorithms for_each_pixel and transform_pixels which are image view equivalents of STL's std::for_each and std::transform.
 It also provides for_each_pixel_position and transform_pixel_positions, which instead of references to pixels, pass to the generic function pixel locators.
