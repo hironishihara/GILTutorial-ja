@@ -477,7 +477,7 @@ In this example "src_loc[above]" corresponds to a fast pointer indexing operatio
 Creating a Generic Version of GIL Algorithms
 -->
 
-### ジェネリックなGILアルゴリズムの作成
+### <a name="section_02_04"> ジェネリックなGILアルゴリズムの作成
 
 <!--
 Let us make our x_gradient more generic.
@@ -685,7 +685,7 @@ GILのアルゴリズムは、ネイティブにこれらのImageへ適用する
 Image View Transformations
 -->
 
-### Image Viewの変換
+### <a name="section_02_05"> Image Viewの変換
 
 <!--
 One way to compute the y-gradient is to rotate the image by 90 degrees, compute the x-gradient and rotate the result back.
@@ -768,7 +768,7 @@ GILでは、連結された複数のViewを簡略化できる場合がありま�
 1D pixel iterators
 -->
 
-### 1次元Pixel Iterator
+### <a name="section_02_06"> 1次元Pixel Iterator
 
 <!--
 Let's go back to x_gradient one more time.
@@ -784,7 +784,8 @@ The way to do that in GIL is to write a version that works for every pixel, but 
 これをどのようにして規則的なアクセスパターンに書き直すことができるのかを知っておくのも有意義でしょう。
 GILでこれを実現するには、View内の全てのPixelに対して処理を行うバージョンを作成し、それを最初の列と最後の列を除いたサブイメージに対して適用するという方法をとります。
 
-```cpp
+{% highlight C++ %}
+
 void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
     for (int y=0; y<src.height(); ++y) {
         gray8c_view_t::x_iterator src_it = src.row_begin(y);
@@ -800,7 +801,8 @@ void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
     x_gradient_unguarded(subimage_view(src, 1, 0, src.width()-2, src.height()),
                          subimage_view(dst, 1, 0, src.width()-2, src.height()));
 }
-```
+
+{% endhighlight %}
 
 <!--
 subimage_view is another example of a GIL view transformation function.
@@ -818,13 +820,15 @@ Now that x_gradient_unguarded operates on every pixel, we can rewrite it more co
 
 また、全Pixelに対して処理を行う`x_gradient_unguarded`は、よりコンパクトに書き換えることができます。
 
-```cpp
+{% highlight C++ %}
+
 void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
     gray8c_view_t::iterator src_it = src.begin();
     for (gray8s_view_t::iterator dst_it = dst.begin(); dst_it!=dst.end(); ++dst_it, ++src_it)
       *dst_it = (src_it.x()[-1] - src_it.x()[1]) / 2;
 }
-```
+
+{% endhighlight %}
 
 <!--
 GIL image views provide begin() and end() methods that return one dimensional pixel iterators which iterate over each pixel in the view, left to right and top to bottom.
