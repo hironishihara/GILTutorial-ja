@@ -850,3 +850,44 @@ GILのImage Viewは、View内の全てのPixelを左から右かつ上から下�
 水平方向Iteratorは行の末尾についての情報をもっていません。
 今回のケースでは、水平方向Iteratorは生のCポインタです。
 この例では、ふたつの隣接PixelにはImage Viewが指し示す範囲外に配置されている可能性があることから、それらに適切にアクセスするために水平方向Iteratorを用いなければなりません。
+
+<!--
+STL Equivalent Algorithms
+-->
+
+### STL-Styleアルゴリズム
+
+<!--
+GIL provides STL equivalents of many algorithms.
+For example, std::transform is an STL algorithm that sets each element in a destination range the result of a generic function taking the corresponding element of the source range.
+In our example, we want to assign to each destination pixel the value of the half-difference of the horizontal neighbors of the corresponding source pixel.
+If we abstract that operation in a function object, we can use GIL's transform_pixel_positions to do that:
+-->
+
+GILは、STL-Styleの多くのアルゴリズムを提供しています。
+例えば、`std::transform`は、出力コンテナの指定範囲にある各要素に対して、対応する入力要素にジェネリック関数を適用した結果をセットするSTLアルゴリズムです。
+GILの例では、出力Image Viewの各Pixelに対して、それに対応する入力Pixelに両隣のPixelの差分の1/2を割り当てていきます。
+計算部分を関数オブジェクトとして抽象化すると、この処理はGILの`transform_pixel_position`を用いて次のように行うことができます。
+
+```cpp
+struct half_x_difference {
+    int operator()(const gray8c_loc_t& src_loc) const {
+        return (src_loc.x()[-1] - src_loc.x()[1]) / 2;
+    }
+};
+
+void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    transform_pixel_positions(src, dst, half_x_difference());
+}
+```
+<!--
+GIL provides the algorithms for_each_pixel and transform_pixels which are image view equivalents of STL's std::for_each and std::transform.
+It also provides for_each_pixel_position and transform_pixel_positions, which instead of references to pixels, pass to the generic function pixel locators.
+This allows for more powerful functions that can use the pixel neighbors through the passed locators.
+GIL algorithms iterate through the pixels using the more efficient two nested loops (as opposed to the single loop using 1-D iterators)
+-->
+
+GILは、Image ViewにおけるSTLの`std::for_each`や`std::transform`相当のものとして、`for_each_pixel`や`transform_pixel`を提供します。
+また、ジェネリック関数に対してPixel参照の代わりにPixel Locatorを渡す、`for_each_pixel_positions`や`transform_pixel_positions`も提供します。
+このことは、渡されたPixel Locatorを通じて隣接Pixelを使用する、さらに強力な関数を可能にします。
+GILアルゴリズムは、(1次元Pixel Iteratorを用いた1段のループではなく)より効率的な2段にネストされたループを用いて反復を行います。
