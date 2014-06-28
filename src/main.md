@@ -710,3 +710,86 @@ For example, two nested subsampled views (views that skip over pixels in X and i
 
 GILでは、連結された複数のViewを簡略化できる場合があります。
 例を挙げると、入れ子になった2つのサブサンプルView (X軸方向でスキップするViewとY軸方向でスキップするView)は、その2つのViewのステップの積をステップとする1つのサブサンプルViewに置き換えることが可能です。
+
+<!--
+1D pixel iterators
+-->
+
+### 1次元Pixel Iterator
+
+<!--
+Let's go back to x_gradient one more time.
+Many image view algorithms apply the same operation for each pixel and GIL provides an abstraction to handle them.
+However, our algorithm has an unusual access pattern, as it skips the first and the last column.
+It would be nice and instructional to see how we can rewrite it in canonical form.
+The way to do that in GIL is to write a version that works for every pixel, but apply it only on the subimage that excludes the first and last column:
+-->
+
+ここでもう一度`x_gradient`の話に戻りましょう。
+多くのImage Viewアルゴリズムでは各Pixelに同じ処理を行います。そして、GILはそのような一連の手順を抽象化しています。
+振り返ってみると、先ほどの`x_gradient`アルゴリズムでは、画像の最初の列にあるPixelと最後の列にあるPixelについてはスキップするという、変則的なアクセスパターンを用いていました。
+これをどのようにして規則的なアクセスパターンに書き直すことができるのかを知っておくのも有意義でしょう。
+GILでこれを実現するには、View内の全てのPixelに対して処理を行うバージョンを作成し、それを最初の列と最後の列を除いたサブイメージに対して適用するという方法をとります。
+
+```cpp
+void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    for (int y=0; y<src.height(); ++y) {
+        gray8c_view_t::x_iterator src_it = src.row_begin(y);
+        gray8s_view_t::x_iterator dst_it = dst.row_begin(y);
+
+        for (int x=0; x<src.width(); ++x)
+            dst_it[x] = (src_it[x-1] - src_it[x+1]) / 2;
+    }
+}
+
+void x_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    assert(src.width()>=2);
+    x_gradient_unguarded(subimage_view(src, 1, 0, src.width()-2, src.height()),
+                         subimage_view(dst, 1, 0, src.width()-2, src.height()));
+}
+```
+
+<!--
+subimage_view is another example of a GIL view transformation function.
+It takes a source view and a rectangular region (in this case, defined as x_min,y_min,width,height) and returns a view operating on that region of the source view.
+The above implementation has no measurable performance degradation from the version that operates on the original views.
+-->
+
+`subimage_view`はGIL View変換関数のもうひとつの例です。
+`subimage_view`は、入力Viewと矩形領域(ここでは、`x_min`、`y_min`、`width`、`height`)を引数にとり、入力Viewの指定した矩形領域を指し示すViewを返します。
+上記の実装であれば、元のViewに対して処理を行っていたバージョンと比較しても、測定できるようなパフォーマンスの低下は生じません。
+
+<!--
+Now that x_gradient_unguarded operates on every pixel, we can rewrite it more compactly:
+-->
+
+また、全Pixelに対して処理を行う`x_gradient_unguarded`は、よりコンパクトに書き換えることができます。
+
+```cpp
+void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
+    gray8c_view_t::iterator src_it = src.begin();
+    for (gray8s_view_t::iterator dst_it = dst.begin(); dst_it!=dst.end(); ++dst_it, ++src_it)
+      *dst_it = (src_it.x()[-1] - src_it.x()[1]) / 2;
+}
+```
+
+<!--
+GIL image views provide begin() and end() methods that return one dimensional pixel iterators which iterate over each pixel in the view, left to right and top to bottom.
+They do a proper "carriage return" - they skip any unused bytes at the end of a row.
+As such, they are slightly suboptimal, because they need to keep track of their current position with respect to the end of the row.
+Their increment operator performs one extra check (are we at the end of the row?), a check that is avoided if two nested loops are used instead.
+These iterators have a method x() which returns the more lightweight horizontal iterator that we used previously.
+Horizontal iterators have no notion of the end of rows.
+In this case, the horizontal iterators are raw C pointers.
+In our example, we must use the horizontal iterators to access the two neighbors properly, since they could reside outside the image view.
+-->
+
+GILのImage Viewは、View内の全てのPixelを左から右かつ上から下の順序で走査する1次元Pixel Iteratorを返す`begin()`と`end()`という関数を提供します。
+これらの1次元Pixel Iteratorは完璧な"キャリッジリターン"を行います。
+すなわち、各行の末尾に未使用のバイトがあればスキップします。
+そしてこのことから、1次元Pixel Iteratorはわずかに最適化の余地を残しています。というのは、これらの1次元Pixel Iteratorは行の末尾を考慮するために自身の現在位置を記録しておく必要があるのです。
+1次元Pixel Iteratorのインクリメントを行う演算子は追加のチェック(現在位置は行の末尾か?)を行っており、代わりとして2段にネストされたループを用いる場合には、このチェックをさけることが出来ます。
+これらの1次元Pixel Iteratorは、さらに軽量な水平方向Iteratorを返す`x()`という関数(前のコードで使用)をもっています。
+水平方向Iteratorは行の末尾についての情報をもっていません。
+今回のケースでは、水平方向Iteratorは生のCポインタです。
+この例では、ふたつの隣接PixelにはImage Viewが指し示す範囲外に配置されている可能性があることから、それらに適切にアクセスするために水平方向Iteratorを用いなければなりません。
