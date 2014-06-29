@@ -161,7 +161,7 @@ Let us first start with 8-bit unsigned grayscale image as the input and 8-bit si
 Here is how the interface to our algorithm looks like:
 -->
 
-入力は8-bit符号なしグレイスケール画像、出力は8-bit符号ありグレイスケール画像として始めましょう。
+入力は8ビット符号なしグレイスケール画像、出力は8ビット符号付きグレイスケール画像として始めましょう。
 まずは、GILを使って作られたアルゴリズムのインタフェースがどのような感じなのか示します。
 
 {% highlight C++ %}
@@ -182,8 +182,8 @@ The output is a grayscale view with a 8-bit signed (denoted by the "s") integer 
 See Appendix 1 for the complete convension GIL uses to name concrete types.
 -->
 
-`gray8c_view_t`は入力画像の型です。Pixelがread-only ("c"で表されています)の8-bitグレイスケールViewです。
-出力は8-bit符号あり("s"で表されています)整数型のグレイスケール画像です。
+`gray8c_view_t`は入力画像の型です。Pixelがread-only ("c"で表されています)の8ビットグレイスケールViewです。
+出力は8ビット符号付き("s"で表されています)整数型のグレイスケール画像です。
 GILが定める型の命名規則については、付録を参照ください。
 
 <!--
@@ -975,7 +975,7 @@ Using our non-generic version we can do it like this:
 上記の例はパフォーマンス上の問題を抱えています。
 `x_gradient`は、ほぼ全ての入力Pixelを2回ずつ間接参照しており、それが原因で上記のコードは色変換を各Pixelで2回実行しています。
 色変換を行った画像を一時的なバッファにコピーしてそのgradientを計算する(この方法であれば、色変換は各Pixelで1回で済みます)ほうが効率的な場合もあるかもしれません。
-ジェネリックでないバージョンでは、次のように行います。
+ジェネリックでないバージョンは、次のようになります。
 
 {% highlight C++ %}
 
@@ -1038,7 +1038,7 @@ GILのメタ関数は、テンプレートのパラメータを自身のパラ�
 GIL constructs that have an associated pixel type, such as pixels, pixel iterators, locators, views and images, all model PixelBasedConcept, which means that they provide a set of metafunctions to query the pixel properties, such as channel_type, color_space_type, channel_mapping_type, and num_channels.
 -->
 
-Pixel、Pixel Iterator、Locator、View、Imageといった関連づけられたPixel型をもつGILコンストラクトは、全て`PixelBasedConcept`に基づいたModelであり、このことは、`channel_type`、`color_space_type`、`channel_mapping_type`、`num_channels`といったPixelのプロパティの問い合わせを行うメタ関数一式をGILが提供するということを意味します。
+Pixel、Pixel Iterator、Locator、View、Imageといった関連づけられたPixel型をもつGILコンストラクトは全て`PixelBasedConcept`に基づいたModelであり、このことは、`channel_type`、`color_space_type`、`channel_mapping_type`、`num_channels`といったPixelのプロパティの問い合わせを行うメタ関数一式をGILが提供するということを意味します。
 
 <!--
 After we get the channel type of the destination view, we use another metafunction to remove its sign (if it is a signed integral type) and then use it to generate the type of a grayscale pixel.
@@ -1050,9 +1050,9 @@ Instead of instantiating the classes directly we could have used type factory me
 The following code is equivalent:
 -->
 
-出力ViewのChannel型を取得した後、(それが符号付き整数型だった場合のめに)符号を取り除くメタ関数を用い、それから、グレイスケールPixelの型をつくるためにそのChannel型を使用します。
+出力ViewのChannel型を取得した後、(それが符号付き整数型だった場合を考慮して)符号を取り除くメタ関数を用い、それから、グレイスケールPixelの型をつくるためにそのChannel型を使用します。
 出来上がったPixelの型からImageの型を作成します。
-GILのImageクラスは、Pixelの型と画像がインタリーブ形式なのかプラナー形式なのかを示すbooleanでテンプレート化されています。
+GILのImageクラスは、Pixelの型と画像がプラナー形式なのかを示すboolean(インタリーブ形式の場合、`false`を指定)でテンプレート化されています。
 GILの単Channel (グレイスケール) Imageは、常にインタリーブ形式でなければなりません。
 GILで型を構築する方法はいくつかあります。
 直接的にクラスを具体化する代わりに、型生成メタ関数を使用することもできます。
@@ -1081,8 +1081,8 @@ GIL also has metafunctions derived_pixel_reference_type, derived_iterator_type, 
 -->
 
 GILは、GILの型を生成するメタ関数一式を提供します。
-`image_type`は、与えられたChannel型、Color Layout、インタリーブ形式/プラナー形式を決めるオプション(インタリーブ形式がデフォルトに指定されています)からImageの型を構築するメタ関数です。
-またGILは、ひとつ以上のプロパティを変更した(それ以外は元のままの)与えられた型からGILコンストラクトの型を構築する`derived_pixel_reference_type`、`derived_iterator_type`、`derived_view_type`、`derived_image_type`といったメタ関数をもっています。
+`image_type`は、与えられたChannel型、Color Layout、プラナー形式/インタリーブ形式を決めるオプション(インタリーブ形式がデフォルトに指定されています)からImageの型を構築するメタ関数です。
+GILは、ひとつ以上のプロパティを変更した(それ以外は元のままの)与えられた型からGILコンストラクトの型を構築する`derived_pixel_reference_type`、`derived_iterator_type`、`derived_view_type`、`derived_image_type`といったメタ関数ももっています。
 
 <!--
 From the image type we can use the nested typedef value_type to obtain the type of a pixel.
@@ -1095,3 +1095,99 @@ Imageの型からは、Pixelの型を取得するために、ネストされた`
 GILのImage、Image View、Locatorは、ネストされた`typedef`である`value_type`をもっており、Pixelの型とそのPixelへの参照を取得するための参照をもっています。
 あるPixel Iteratorをもっている場合には、その`iterator_traits`からImageの型やImage Viewの型やLocatorの型を得ることができます。
 色変換を伴った`copy_pixels`の短縮表記バージョンである、`copy_and_converted_pixels`アルゴリズムにも注目しておいてください。
+
+<!--
+Virtual Image Views
+-->
+
+### Virtual Image View
+
+<!--
+So far we have been dealing with images that have pixels stored in memory.
+GIL allows you to create an image view of an arbitrary image, including a synthetic function.
+To demonstrate this, let us create a view of the Mandelbrot set.
+First, we need to create a function object that computes the value of the Mandelbrot set at a given location (x,y) in the image:
+-->
+
+ここまでは、メモリ上に保存されたPixelをもつ画像を扱ってきました。
+GILは、合成関数を含む任意の画像についてのImage Viewを作成することが出来ます。
+これを実演するために、マンデルブロ集合の画像を作ってみましょう。
+最初に、与えられた画像中の座標(x,y)におけるマンデルブロ集合の値を計算する関数オブジェクトを作成する必要があります。
+
+```cpp
+// models PixelDereferenceAdaptorConcept
+struct mandelbrot_fn {
+    typedef point2<ptrdiff_t>   point_t;
+
+    typedef mandelbrot_fn       const_t;
+    typedef gray8_pixel_t       value_type;
+    typedef value_type          reference;
+    typedef value_type          const_reference;
+    typedef point_t             argument_type;
+    typedef reference           result_type;
+    BOOST_STATIC_CONSTANT(bool, is_mutable=false);
+
+    mandelbrot_fn() {}
+    mandelbrot_fn(const point_t& sz) : _img_size(sz) {}
+
+    result_type operator()(const point_t& p) const {
+        // normalize the coords to (-2..1, -1.5..1.5)
+        double t=get_num_iter(point2<double>(p.x/(double)_img_size.x*3-2, p.y/(double)_img_size.y*3-1.5f));
+        return value_type((bits8)(pow(t,0.2)*255));   // raise to power suitable for viewing
+    }
+private:
+    point_t _img_size;
+
+    double get_num_iter(const point2<double>& p) const {
+        point2<double> Z(0,0);
+        for (int i=0; i<100; ++i) {     // 100 iterations
+            Z = point2<double>(Z.x*Z.x - Z.y*Z.y + p.x, 2*Z.x*Z.y + p.y);
+            if (Z.x*Z.x + Z.y*Z.y > 4)
+                return i/(double)100;
+        }
+        return 0;
+    }
+};
+```
+
+<!--
+We can now use GIL's virtual_2d_locator with this function object to construct a Mandelbrot view of size 200x200 pixels:
+-->
+
+ここで、200x200 PixelのマンデルブロViewを構築するために、GILの`virtual_2d_locator`と共にこの関数オブジェクトを用います。
+
+```cpp
+typedef mandelbrot_fn::point_t point_t;
+typedef virtual_2d_locator<mandelbrot_fn,false> locator_t;
+typedef image_view<locator_t> my_virt_view_t;
+
+point_t dims(200,200);
+
+// Construct a Mandelbrot view with a locator, taking top-left corner (0,0) and step (1,1)
+my_virt_view_t mandel(dims, locator_t(point_t(0,0), point_t(1,1), mandelbrot_fn(dims)));
+```
+
+<!--
+We can treat the synthetic view just like a real one.
+For example, let's invoke our x_gradient algorithm to compute the gradient of the 90-degree rotated view of the Mandelbrot set and save the original and the result:
+-->
+
+合成関数によるViewは実態をもつViewと同じように扱うことが出来ます。
+例として、マンデルブロ集合を90度回転させたViewのgradientを計算するために私たちの`x_gradient`アルゴリズムを実行してみましょう。
+
+```cpp
+gray8s_image_t img(dims);
+x_gradient(rotated90cw_view(mandel), view(img));
+
+// Save the Mandelbrot set and its 90-degree rotated gradient (jpeg cannot save signed char; must convert to unsigned char)
+jpeg_write_view("mandel.jpg",mandel);
+jpeg_write_view("mandel_grad.jpg",color_converted_view<gray8_pixel_t>(const_view(img)));
+```
+
+<!--
+Here is what the two files look like:
+-->
+
+ふたつのファイルがどのようになったかを示します。
+
+![マンデルブロ集合](http://hironishihara.github.com/GILTutorial-ja/src/img/mandel.jpg "マンデルブロ集合")
