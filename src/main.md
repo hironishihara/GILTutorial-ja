@@ -964,7 +964,7 @@ GILはこのようなケースを検出し、色変換のコードが呼び出�
 Image
 -->
 
-### Image
+### <a name="section_02_09"> Image
 
 <!--
 The above example has a performance problem - x_gradient dereferences most source pixels twice, which will cause the above code to perform color conversion twice.
@@ -977,14 +977,16 @@ Using our non-generic version we can do it like this:
 色変換を行った画像を一時的なバッファにコピーしてそのgradientを計算する(この方法であれば、色変換は各Pixelで1回で済みます)ほうが効率的な場合もあるかもしれません。
 ジェネリックでないバージョンでは、次のように行います。
 
-```cpp
+{% highlight C++ %}
+
 void x_luminosity_gradient(const rgb32fc_view_t& src, const gray8s_view_t& dst) {
     gray8_image_t ccv_image(src.dimensions());
     copy_pixels(color_converted_view<gray8_pixel_t>(src), view(ccv_image));
 
     x_gradient(const_view(ccv_image), dst);
 }
-```
+
+{% endhighlight %}
 
 <!--
 First we construct an 8-bit grayscale image with the same dimensions as our source.
@@ -1004,7 +1006,8 @@ Creating a generic version of the above is a bit trickier:
 
 上記のコードのジェネリックバージョンは、少々トリッキーです。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
     typedef typename channel_type<DstView>::type d_channel_t;
@@ -1016,7 +1019,8 @@ void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
     copy_pixels(color_converted_view<gray_pixel_t>(src), view(ccv_image));
     x_gradient(const_view(ccv_image), dst);
 }
-```
+
+{% endhighlight %}
 
 <!--
 First we use the channel_type metafunction to get the channel type of the destination view.
@@ -1054,7 +1058,8 @@ GILで型を構築する方法はいくつかあります。
 直接的にクラスを具体化する代わりに、型生成メタ関数を使用することもできます。
 上記のコードと次に示すコードは等価です。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcView, typename DstView>
 void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
     typedef typename channel_type<DstView>::type d_channel_t;
@@ -1066,7 +1071,8 @@ void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
     copy_and_convert_pixels(src, view(ccv_image));
     x_gradient(const_view(ccv_image), dst);
 }
-```
+
+{% endhighlight %}
 
 <!--
 GIL provides a set of metafunctions that generate GIL types - image_type is one such meta-function that constructs the type of an image from a given channel type, color layout, and planar/interleaved option (the default is interleaved).
