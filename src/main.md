@@ -1100,7 +1100,7 @@ GILのImage、Image View、Locatorは、ネストされた`typedef`である`val
 Virtual Image Views
 -->
 
-### Virtual Image View
+### <a name="section_10"> Virtual Image View
 
 <!--
 So far we have been dealing with images that have pixels stored in memory.
@@ -1114,7 +1114,8 @@ GILは、合成関数を含む任意の画像についてのImage Viewを作成�
 これを実演するために、マンデルブロ集合の画像を作ってみましょう。
 最初に、与えられた画像中の座標(x,y)におけるマンデルブロ集合の値を計算する関数オブジェクトを作成する必要があります。
 
-```cpp
+{% highlight C++ %}
+
 // models PixelDereferenceAdaptorConcept
 struct mandelbrot_fn {
     typedef point2<ptrdiff_t>   point_t;
@@ -1148,7 +1149,8 @@ private:
         return 0;
     }
 };
-```
+
+{% endhighlight %}
 
 <!--
 We can now use GIL's virtual_2d_locator with this function object to construct a Mandelbrot view of size 200x200 pixels:
@@ -1156,7 +1158,8 @@ We can now use GIL's virtual_2d_locator with this function object to construct a
 
 ここで、200x200 PixelのマンデルブロViewを構築するために、GILの`virtual_2d_locator`と共にこの関数オブジェクトを用います。
 
-```cpp
+{% highlight C++ %}
+
 typedef mandelbrot_fn::point_t point_t;
 typedef virtual_2d_locator<mandelbrot_fn,false> locator_t;
 typedef image_view<locator_t> my_virt_view_t;
@@ -1165,7 +1168,8 @@ point_t dims(200,200);
 
 // Construct a Mandelbrot view with a locator, taking top-left corner (0,0) and step (1,1)
 my_virt_view_t mandel(dims, locator_t(point_t(0,0), point_t(1,1), mandelbrot_fn(dims)));
-```
+
+{% endhighlight %}
 
 <!--
 We can treat the synthetic view just like a real one.
@@ -1175,14 +1179,16 @@ For example, let's invoke our x_gradient algorithm to compute the gradient of th
 合成関数によるViewは実態をもつViewと同じように扱うことが出来ます。
 例として、マンデルブロ集合を90度回転させたViewのgradientを計算するために私たちの`x_gradient`アルゴリズムを実行してみましょう。
 
-```cpp
+{% highlight C++ %}
+
 gray8s_image_t img(dims);
 x_gradient(rotated90cw_view(mandel), view(img));
 
 // Save the Mandelbrot set and its 90-degree rotated gradient (jpeg cannot save signed char; must convert to unsigned char)
 jpeg_write_view("mandel.jpg",mandel);
 jpeg_write_view("mandel_grad.jpg",color_converted_view<gray8_pixel_t>(const_view(img)));
-```
+
+{% endhighlight %}
 
 <!--
 Here is what the two files look like:
