@@ -140,7 +140,7 @@ Let us first start with 8-bit unsigned grayscale image as the input and 8-bit si
 Here is how the interface to our algorithm looks like:
 -->
 
-入力は8-bit符号なしグレイスケール画像、出力は8-bit符号ありグレイスケール画像として始めましょう。
+入力は8ビット符号なしグレイスケール画像、出力は8ビット符号付きグレイスケール画像として始めましょう。
 まずは、GILを使って作られたアルゴリズムのインタフェースがどのような感じなのか示します。
 
 ```cpp
@@ -159,8 +159,8 @@ The output is a grayscale view with a 8-bit signed (denoted by the "s") integer 
 See Appendix 1 for the complete convension GIL uses to name concrete types.
 -->
 
-`gray8c_view_t`は入力画像の型です。Pixelがread-only ("c"で表されています)の8-bitグレイスケールViewです。
-出力は8-bit符号あり("s"で表されています)整数型のグレイスケール画像です。
+`gray8c_view_t`は入力画像の型です。Pixelがread-only ("c"で表されています)の8ビットグレイスケールViewです。
+出力は8ビット符号付き("s"で表されています)整数型のグレイスケール画像です。
 GILが定める型の命名規則については、付録を参照ください。
 
 <!--
@@ -910,7 +910,7 @@ Using our non-generic version we can do it like this:
 上記の例はパフォーマンス上の問題を抱えています。
 `x_gradient`は、ほぼ全ての入力Pixelを2回ずつ間接参照しており、それが原因で上記のコードは色変換を各Pixelで2回実行しています。
 色変換を行った画像を一時的なバッファにコピーしてそのgradientを計算する(この方法であれば、色変換は各Pixelで1回で済みます)ほうが効率的な場合もあるかもしれません。
-ジェネリックでないバージョンでは、次のように行います。
+ジェネリックでないバージョンは、次のようになります。
 
 ```cpp
 void x_luminosity_gradient(const rgb32fc_view_t& src, const gray8s_view_t& dst) {
@@ -969,7 +969,7 @@ GILのメタ関数は、テンプレートのパラメータを自身のパラ�
 GIL constructs that have an associated pixel type, such as pixels, pixel iterators, locators, views and images, all model PixelBasedConcept, which means that they provide a set of metafunctions to query the pixel properties, such as channel_type, color_space_type, channel_mapping_type, and num_channels.
 -->
 
-Pixel、Pixel Iterator、Locator、View、Imageといった関連づけられたPixel型をもつGILコンストラクトは、全て`PixelBasedConcept`に基づいたModelであり、このことは、`channel_type`、`color_space_type`、`channel_mapping_type`、`num_channels`といったPixelのプロパティの問い合わせを行うメタ関数一式をGILが提供するということを意味します。
+Pixel、Pixel Iterator、Locator、View、Imageといった関連づけられたPixel型をもつGILコンストラクトは全て`PixelBasedConcept`に基づいたModelであり、このことは、`channel_type`、`color_space_type`、`channel_mapping_type`、`num_channels`といったPixelのプロパティの問い合わせを行うメタ関数一式をGILが提供するということを意味します。
 
 <!--
 After we get the channel type of the destination view, we use another metafunction to remove its sign (if it is a signed integral type) and then use it to generate the type of a grayscale pixel.
@@ -981,9 +981,9 @@ Instead of instantiating the classes directly we could have used type factory me
 The following code is equivalent:
 -->
 
-出力ViewのChannel型を取得した後、(それが符号付き整数型だった場合のめに)符号を取り除くメタ関数を用い、それから、グレイスケールPixelの型をつくるためにそのChannel型を使用します。
+出力ViewのChannel型を取得した後、(それが符号付き整数型だった場合を考慮して)符号を取り除くメタ関数を用い、それから、グレイスケールPixelの型をつくるためにそのChannel型を使用します。
 出来上がったPixelの型からImageの型を作成します。
-GILのImageクラスは、Pixelの型と画像がインタリーブ形式なのかプラナー形式なのかを示すbooleanでテンプレート化されています。
+GILのImageクラスは、Pixelの型と画像がプラナー形式なのかを示すboolean(インタリーブ形式の場合、`false`を指定)でテンプレート化されています。
 GILの単Channel (グレイスケール) Imageは、常にインタリーブ形式でなければなりません。
 GILで型を構築する方法はいくつかあります。
 直接的にクラスを具体化する代わりに、型生成メタ関数を使用することもできます。
@@ -1010,8 +1010,8 @@ GIL also has metafunctions derived_pixel_reference_type, derived_iterator_type, 
 -->
 
 GILは、GILの型を生成するメタ関数一式を提供します。
-`image_type`は、与えられたChannel型、Color Layout、インタリーブ形式/プラナー形式を決めるオプション(インタリーブ形式がデフォルトに指定されています)からImageの型を構築するメタ関数です。
-またGILは、ひとつ以上のプロパティを変更した(それ以外は元のままの)与えられた型からGILコンストラクトの型を構築する`derived_pixel_reference_type`、`derived_iterator_type`、`derived_view_type`、`derived_image_type`といったメタ関数をもっています。
+`image_type`は、与えられたChannel型、Color Layout、プラナー形式/インタリーブ形式を決めるオプション(インタリーブ形式がデフォルトに指定されています)からImageの型を構築するメタ関数です。
+GILは、ひとつ以上のプロパティを変更した(それ以外は元のままの)与えられた型からGILコンストラクトの型を構築する`derived_pixel_reference_type`、`derived_iterator_type`、`derived_view_type`、`derived_image_type`といったメタ関数ももっています。
 
 <!--
 From the image type we can use the nested typedef value_type to obtain the type of a pixel.
