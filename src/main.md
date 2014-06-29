@@ -677,7 +677,7 @@ Another example: suppose we want to compute the gradient of the N-th channel of 
 Here is how to do that:
 -->
 
-もうひとつの例として、カラーImageのN番目Channelのgradientを計算してみましょう。
+もうひとつの例として、カラー画像のN番目Channelのgradientを計算してみましょう。
 
 ```cpp
 template <typename SrcView, typename DstView>
@@ -848,7 +848,7 @@ Here how to compute the luminosity gradient of a 32-bit float RGB image:
 -->
 
 画像の各色平面のgradientを計算するのではなく、明度のgradientを計算したい場合も多々あります。
-言い換えると、カラー画像からクレイスケール画像に変換して、その結果のgradientを計算したい場合です。
+言い換えると、カラー画像からグレイスケール画像に変換して、その結果のgradientを計算したい場合です。
 32ビット浮動小数点型RGB画像の明度のgradientをいかに算出するか、次に示します。
 
 ```cpp
@@ -894,3 +894,133 @@ GIL detects this case and avoids calling the color conversion code at all - i.e.
 目標のColor SpaceとChannel型が偶然にも入力のそれらと同じだった場合、色変換は必要ありません。
 GILはこのようなケースを検出し、色変換のコードが呼び出されるのを完璧に回避します。
 つまり、このような場合の`color_converted_view`は、入力Viewそのものを返すのです。
+
+<!--
+Image
+-->
+
+### Image
+
+<!--
+The above example has a performance problem - x_gradient dereferences most source pixels twice, which will cause the above code to perform color conversion twice.
+Sometimes it may be more efficient to copy the color converted image into a temporary buffer and use it to compute the gradient - that way color conversion is invoked once per pixel.
+Using our non-generic version we can do it like this:
+-->
+
+上記の例はパフォーマンス上の問題を抱えています。
+`x_gradient`は、ほぼ全ての入力Pixelを2回ずつ間接参照しており、それが原因で上記のコードは色変換を各Pixelで2回実行しています。
+色変換を行った画像を一時的なバッファにコピーしてそのgradientを計算する(この方法であれば、色変換は各Pixelで1回で済みます)ほうが効率的な場合もあるかもしれません。
+ジェネリックでないバージョンでは、次のように行います。
+
+```cpp
+void x_luminosity_gradient(const rgb32fc_view_t& src, const gray8s_view_t& dst) {
+    gray8_image_t ccv_image(src.dimensions());
+    copy_pixels(color_converted_view<gray8_pixel_t>(src), view(ccv_image));
+
+    x_gradient(const_view(ccv_image), dst);
+}
+```
+
+<!--
+First we construct an 8-bit grayscale image with the same dimensions as our source.
+Then we copy a color-converted view of the source into the temporary image.
+Finally we use a read-only view of the temporary image in our x_gradient algorithm.
+As the example shows, GIL provides global functions view and const_view that take an image and return a mutable or an immutable view of its pixels.
+-->
+
+まず、入力画像と同じサイズの8ビットグレイスケールImageを構築します。
+そして、この一時的なImageに色変換Viewから取得した各Pixelの値をコピーします。
+最後に、一時的なImageのread-onlyなViewに、私たちが作成した`x_gradient`を適用します。
+上記の例で示されているように、GILは、あるImageを引数に取り、そのPixelを指し示すmutableなViewとimmutableなViewを返す、グローバル関数`view`と`const_view`を提供します。
+
+<!--
+Creating a generic version of the above is a bit trickier:
+-->
+
+上記のコードのジェネリックバージョンは、少々トリッキーです。
+
+```cpp
+template <typename SrcView, typename DstView>
+void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
+    typedef typename channel_type<DstView>::type d_channel_t;
+    typedef typename channel_convert_to_unsigned<d_channel_t>::type channel_t;
+    typedef pixel<channel_t, gray_layout_t>  gray_pixel_t;
+    typedef image<gray_pixel_t, false>       gray_image_t;
+
+    gray_image_t ccv_image(src.dimensions());
+    copy_pixels(color_converted_view<gray_pixel_t>(src), view(ccv_image));
+    x_gradient(const_view(ccv_image), dst);
+}
+```
+
+<!--
+First we use the channel_type metafunction to get the channel type of the destination view.
+A metafunction is a function operating on types.
+In GIL metafunctions are structs which take their parameters as template parameters and return their result in a nested typedef called type.
+In this case, channel_type is a unary metafunction which in this example is called with the type of an image view and returns the type of the channel associated with that image view.
+-->
+
+まず、出力ViewのChannel型を取得するために`channel_type`というメタ関数を使用します。
+メタ関数とは、型を扱う関数です。
+GILのメタ関数は、テンプレートのパラメータを自身のパラメータとして取り、ネストされた`typedef`で定義された型を返します。
+今回のケースで言えば、上記の例の中の`channel_type`は、Image Viewの型を引数に取り、そのImage Viewに関連づけられているChannel型を返す、ひとつの引数を取るメタ関数です。
+
+<!--
+GIL constructs that have an associated pixel type, such as pixels, pixel iterators, locators, views and images, all model PixelBasedConcept, which means that they provide a set of metafunctions to query the pixel properties, such as channel_type, color_space_type, channel_mapping_type, and num_channels.
+-->
+
+Pixel、Pixel Iterator、Locator、View、Imageといった関連づけられたPixel型をもつGILコンストラクトは、全て`PixelBasedConcept`に基づいたModelであり、このことは、`channel_type`、`color_space_type`、`channel_mapping_type`、`num_channels`といったPixelのプロパティの問い合わせを行うメタ関数一式をGILが提供するということを意味します。
+
+<!--
+After we get the channel type of the destination view, we use another metafunction to remove its sign (if it is a signed integral type) and then use it to generate the type of a grayscale pixel.
+From the pixel type we create the image type.
+GIL's image class is templated over the pixel type and a boolean indicating whether the image should be planar or interleaved.
+Single-channel (grayscale) images in GIL must always be interleaved.
+There are multiple ways of constructing types in GIL.
+Instead of instantiating the classes directly we could have used type factory metafunctions.
+The following code is equivalent:
+-->
+
+出力ViewのChannel型を取得した後、(それが符号付き整数型だった場合のめに)符号を取り除くメタ関数を用い、それから、グレイスケールPixelの型をつくるためにそのChannel型を使用します。
+出来上がったPixelの型からImageの型を作成します。
+GILのImageクラスは、Pixelの型と画像がインタリーブ形式なのかプラナー形式なのかを示すbooleanでテンプレート化されています。
+GILの単Channel (グレイスケール) Imageは、常にインタリーブ形式でなければなりません。
+GILで型を構築する方法はいくつかあります。
+直接的にクラスを具体化する代わりに、型生成メタ関数を使用することもできます。
+上記のコードと次に示すコードは等価です。
+
+```cpp
+template <typename SrcView, typename DstView>
+void x_luminosity_gradient(const SrcView& src, const DstView& dst) {
+    typedef typename channel_type<DstView>::type d_channel_t;
+    typedef typename channel_convert_to_unsigned<d_channel_t>::type channel_t;
+    typedef typename image_type<channel_t, gray_layout_t>::type gray_image_t;
+    typedef typename gray_image_t::value_type gray_pixel_t;
+
+    gray_image_t ccv_image(src.dimensions());
+    copy_and_convert_pixels(src, view(ccv_image));
+    x_gradient(const_view(ccv_image), dst);
+}
+```
+
+<!--
+GIL provides a set of metafunctions that generate GIL types - image_type is one such meta-function that constructs the type of an image from a given channel type, color layout, and planar/interleaved option (the default is interleaved).
+There are also similar meta-functions to construct the types of pixel references, iterators, locators and image views.
+GIL also has metafunctions derived_pixel_reference_type, derived_iterator_type, derived_view_type and derived_image_type that construct the type of a GIL construct from a given source one by changing one or more properties of the type and keeping the rest.
+-->
+
+GILは、GILの型を生成するメタ関数一式を提供します。
+`image_type`は、与えられたChannel型、Color Layout、インタリーブ形式/プラナー形式を決めるオプション(インタリーブ形式がデフォルトに指定されています)からImageの型を構築するメタ関数です。
+またGILは、ひとつ以上のプロパティを変更した(それ以外は元のままの)与えられた型からGILコンストラクトの型を構築する`derived_pixel_reference_type`、`derived_iterator_type`、`derived_view_type`、`derived_image_type`といったメタ関数をもっています。
+
+<!--
+From the image type we can use the nested typedef value_type to obtain the type of a pixel.
+GIL images, image views and locators have nested typedefs value_type and reference to obtain the type of the pixel and a reference to the pixel.
+If you have a pixel iterator, you can get these types from its iterator_traits.
+Note also the algorithm copy_and_convert_pixels, which is an abbreviated version of copy_pixels with a color converted source view.
+-->
+
+Imageの型からは、Pixelの型を取得するために、ネストされた`typedef`である`value_type`を使うことが出来ます。
+GILのImage、Image View、Locatorは、ネストされた`typedef`である`value_type`をもっており、Pixelの型とそのPixelへの参照を取得するための参照をもっています。
+あるPixel Iteratorをもっている場合には、その`iterator_traits`からImageの型やImage Viewの型やLocatorの型を得ることができます。
+色変換を伴った`copy_pixels`の短縮表記バージョンである、`copy_and_converted_pixels`アルゴリズムにも注目しておいてください。
