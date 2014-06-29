@@ -1024,3 +1024,99 @@ Imageの型からは、Pixelの型を取得するために、ネストされた`
 GILのImage、Image View、Locatorは、ネストされた`typedef`である`value_type`をもっており、Pixelの型とそのPixelへの参照を取得するための参照をもっています。
 あるPixel Iteratorをもっている場合には、その`iterator_traits`からImageの型やImage Viewの型やLocatorの型を得ることができます。
 色変換を伴った`copy_pixels`の短縮表記バージョンである、`copy_and_converted_pixels`アルゴリズムにも注目しておいてください。
+
+<!--
+Virtual Image Views
+-->
+
+### Virtual Image View
+
+<!--
+So far we have been dealing with images that have pixels stored in memory.
+GIL allows you to create an image view of an arbitrary image, including a synthetic function.
+To demonstrate this, let us create a view of the Mandelbrot set.
+First, we need to create a function object that computes the value of the Mandelbrot set at a given location (x,y) in the image:
+-->
+
+ここまでは、メモリ上に保存されたPixelをもつ画像を扱ってきました。
+GILは、合成関数を含む任意の画像についてのImage Viewを作成することが出来ます。
+これを実演するために、マンデルブロ集合の画像を作ってみましょう。
+最初に、与えられた画像中の座標(x,y)におけるマンデルブロ集合の値を計算する関数オブジェクトを作成する必要があります。
+
+```cpp
+// models PixelDereferenceAdaptorConcept
+struct mandelbrot_fn {
+    typedef point2<ptrdiff_t>   point_t;
+
+    typedef mandelbrot_fn       const_t;
+    typedef gray8_pixel_t       value_type;
+    typedef value_type          reference;
+    typedef value_type          const_reference;
+    typedef point_t             argument_type;
+    typedef reference           result_type;
+    BOOST_STATIC_CONSTANT(bool, is_mutable=false);
+
+    mandelbrot_fn() {}
+    mandelbrot_fn(const point_t& sz) : _img_size(sz) {}
+
+    result_type operator()(const point_t& p) const {
+        // normalize the coords to (-2..1, -1.5..1.5)
+        double t=get_num_iter(point2<double>(p.x/(double)_img_size.x*3-2, p.y/(double)_img_size.y*3-1.5f));
+        return value_type((bits8)(pow(t,0.2)*255));   // raise to power suitable for viewing
+    }
+private:
+    point_t _img_size;
+
+    double get_num_iter(const point2<double>& p) const {
+        point2<double> Z(0,0);
+        for (int i=0; i<100; ++i) {     // 100 iterations
+            Z = point2<double>(Z.x*Z.x - Z.y*Z.y + p.x, 2*Z.x*Z.y + p.y);
+            if (Z.x*Z.x + Z.y*Z.y > 4)
+                return i/(double)100;
+        }
+        return 0;
+    }
+};
+```
+
+<!--
+We can now use GIL's virtual_2d_locator with this function object to construct a Mandelbrot view of size 200x200 pixels:
+-->
+
+ここで、200x200 PixelのマンデルブロViewを構築するために、GILの`virtual_2d_locator`と共にこの関数オブジェクトを用います。
+
+```cpp
+typedef mandelbrot_fn::point_t point_t;
+typedef virtual_2d_locator<mandelbrot_fn,false> locator_t;
+typedef image_view<locator_t> my_virt_view_t;
+
+point_t dims(200,200);
+
+// Construct a Mandelbrot view with a locator, taking top-left corner (0,0) and step (1,1)
+my_virt_view_t mandel(dims, locator_t(point_t(0,0), point_t(1,1), mandelbrot_fn(dims)));
+```
+
+<!--
+We can treat the synthetic view just like a real one.
+For example, let's invoke our x_gradient algorithm to compute the gradient of the 90-degree rotated view of the Mandelbrot set and save the original and the result:
+-->
+
+合成関数によるViewは実態をもつViewと同じように扱うことが出来ます。
+例として、マンデルブロ集合を90度回転させたViewのgradientを計算するために私たちの`x_gradient`アルゴリズムを実行してみましょう。
+
+```cpp
+gray8s_image_t img(dims);
+x_gradient(rotated90cw_view(mandel), view(img));
+
+// Save the Mandelbrot set and its 90-degree rotated gradient (jpeg cannot save signed char; must convert to unsigned char)
+jpeg_write_view("mandel.jpg",mandel);
+jpeg_write_view("mandel_grad.jpg",color_converted_view<gray8_pixel_t>(const_view(img)));
+```
+
+<!--
+Here is what the two files look like:
+-->
+
+ふたつのファイルがどのようになったかを示します。
+
+![マンデルブロ集合](http://hironishihara.github.com/GILTutorial-ja/src/img/mandel.jpg "マンデルブロ集合")
