@@ -317,7 +317,7 @@ Here is a faster version of the above:
 Image Viewの`operator(x,y)`を使用して与えられた座標のPixel参照を取得し、そこに両隣のPixelの差分の1/2を代入します。
 `operator()`はグレイスケールPixelの参照を返します。
 グレイスケールPixelはそのChannel (`src`における`unsigned char`)と変換可能であり、Channelからのコピーコンストラクションが可能です。(これが可能なのはグレイスケールPixelだけです。)
-上記のコードは読みやすいのですが、それほど高速ではありません。というのも、実行ファイル内の`operator()`が2次元格子上の座標を算出する際に和と積を用いているからです。
+上記のコードは読みやすいのですが、それほど高速ではありません。というのも、ふたつの引数を取る`operator()`が2次元格子上の座標を算出する際に和と積を用いているからです。
 上記のコードをより高速にしたバージョンは次の様になります。
 
 {% highlight C++ %}
@@ -467,7 +467,7 @@ To improve the performance, GIL can cache and reuse this offset:
 GILのPixel Locatorは、水平方向と垂直方向のどちらにも移動できること以外は、Iteratorとよく似ています。
 上記のコードにある通り、`src_loc.x()`と`src_loc.y()`はそれぞれ水平方向Iteratorの参照と垂直方向Iteratorの参照をそれぞれ返すので、それらを使ってLocatorを好きな方向に動かすことができます。
 加えて、Locatorは`operator+=`と`operator-=`を用いることで、両方向へ同時に移動することが出来ます。
-Image Viewと同じように、Locatorは現在位置を基準にした相対的オフセットで指定されるPixelへの参照を返す`operator()`を提供します。
+Image Viewと同じように、Locatorは現在位置を基準にした相対的オフセットで指定されるPixelへの参照を返す`operator()`(この演算子は2個の引数を取ります)を提供します。
 例えば、`src_loc(0,1)`は現在指し示しているPixelの下側に隣接するPixelの参照を返します。
 Locatorはとても軽量なオブジェクトであり、上記の例ではわずか8バイトです。
 現在のPixelを指す生ポインタと、ある行から次の行までのバイト数を表す整数型(垂直移動の際のステップ数として使用します)で構成されています。
@@ -1131,7 +1131,7 @@ GILのImage、Image View、Locatorは、ネストされた`typedef`である`val
 Virtual Image Views
 -->
 
-### <a name="section_10"> Virtual Image View
+### <a name="section_02_10"> Virtual Image View
 
 <!--
 So far we have been dealing with images that have pixels stored in memory.
@@ -1228,3 +1228,150 @@ Here is what the two files look like:
 ふたつのファイルがどのようになったかを示します。
 
 ![マンデルブロ集合](http://hironishihara.github.com/GILTutorial-ja/src/img/mandel.jpg "マンデルブロ集合")
+
+
+<!--
+Run-Time Specified Images and Image Views
+-->
+
+### <a name="section_02_11"> 実行時に型を指定するImageとImage View
+
+<!--
+So far we have created a generic function that computes the image gradient of a templated image view.
+Sometimes, however, the properties of an image view, such as its color space and channel depth, may not be available at compile time.
+GIL's dynamic_image extension allows for working with GIL constructs that are specified at run time, also called variants.
+GIL provides models of a run-time instantiated image, any_image, and a run-time instantiated image view, any_image_view.
+The mechanisms are in place to create other variants, such as any_pixel, any_pixel_iterator, etc.
+Most of GIL's algorithms and all of the view transformation functions also work with run-time instantiated image views and binary algorithms, such as copy_pixels can have either or both arguments be variants.
+-->
+
+ここまで、テンプレート化されたImage Viewのgradient画像を算出するジェネリック関数を作成してきました。
+しかし、Color SpaceやChannel深度などといったImage Viewのプロパティをコンパイル時に利用できない場合もあるかもしれません。
+GILの`dynamic_image` extensionは、variantとも呼ばれる実行時に型が決まるGILコンストラクトと共に動作することを可能にします。
+GILは、実行時に型が決まる即席のImageのModelである`any_image`と、実行時に型が決まる即席のImage ViewのModelである`any_image_view`を提供します。
+このようなメカニズムは、`any_pixel`や`any_pixel_iterator`など他のvariantを作成するためのものです。
+`copy_pixels`が2個の引数の片方もしくは両方にvariantを取ることが可能であるように、ほとんどのGILアルゴリズムと全てのView変換関数も、実行時に型が決まる即席のImage Viewや実行時に型が決まる即席のアルゴリズムと共に動作することが可能です。
+
+<!--
+Lets make our x_luminosity_gradient algorithm take a variant image view.
+For simplicity, let's assume that only the source view can be a variant.
+(As an example of using multiple variants, see GIL's image view algorithm overloads taking multiple variants.)
+-->
+
+variantなImage Viewをとる`x_luminosity_gradient`アルゴリズムを作ってみましょう。
+簡単のために、入力Viewだけvariantにすることができるようにしてみましょう。
+(複数のvariantを使った例は、複数のvariantを引数に取るようにオーバーロードしたGILのImage Viewアルゴリズムを参照ください。)
+
+<!--
+First, we need to make a function object that contains the templated destination view and has an application operator taking a templated source view:
+-->
+
+まず始めに、テンプレート化された出力Viewをもち、テンプレート化された入力Viewを引数に取るアプリケーションオペレータをもつ、関数オブジェクトを作成する必要があります。
+
+{% highlight C++ %}
+
+#include <boost/gil/extension/dynamic_image/dynamic_image_all.hpp>
+
+template <typename DstView>
+struct x_gradient_obj {
+    typedef void result_type;        // required typedef
+
+    const DstView& \_dst;
+    x_gradient_obj(const DstView& dst) : \_dst(dst) {}
+
+    template <typename SrcView>
+    void operator()(const SrcView& src) const { x_luminosity_gradient(src, \_dst); }
+};
+
+{% endhighlight %}
+
+<!--
+The second step is to provide an overload of x_luminosity_gradient that takes image view variant and calls GIL's apply_operation passing it the function object:
+-->
+
+つづいての手順は、Image View variantを引数に取り、それを関数オブジェクトに渡すGILの`apply_operation`を呼び出す、`x_luminosity_gradient`のオーバーロードを提供することです。
+
+{% highlight C++ %}
+
+template <typename SrcViews, typename DstView>
+void x_luminosity_gradient(const any_image_view<SrcViews>& src, const DstView& dst) {
+    apply_operation(src, x_gradient_obj<DstView>(dst));
+}
+
+{% endhighlight %}
+
+<!--
+any_image_view<SrcViews> is the image view variant.
+It is templated over SrcViews, an enumeration of all possible view types the variant can take.
+src contains inside an index of the currently instantiated type, as well as a block of memory containing the instance.
+apply_operation goes through a switch statement over the index, each case of which casts the memory to the correct view type and invokes the function object with it.
+Invoking an algorithm on a variant has the overhead of one switch statement.
+Algorithms that perform an operation for each pixel in an image view have practically no performance degradation when used with a variant.
+-->
+
+`any_image_view<SrcViews>`は、Image View variantです。
+これは、variantが取りうるViewの型を列挙したリストである`SrcViews`でテンプレート化されています。
+メモリのブロック内にインスタンスが含まれるのと同じように、`src`には現在インスタンス化されている型のインデクスが含まれます。
+`apply_operation`はインデクスによるswitch文判定を実施し、各ケースごとに正しいViewの型へメモリをキャストし、そのViewと共に関数オブジェクトを実行します。
+variant上で呼び出されたアルゴリズムは、switch文1個分のオーバーヘッドをもちます。
+Image Viewの各Pixelに処理を実行するアルゴリズムは、variantと共に使用した場合にもパフォーマンスの低下はありません。
+
+<!--
+Here is how we can construct a variant and invoke the algorithm:
+-->
+
+ここで、いかにvariantを構築し、いかにアルゴリズムを呼び出すのかを示します。
+
+{% highlight C++ %}
+
+#include <boost/mpl/vector.hpp>
+#include <boost/gil/extension/io/jpeg_dynamic_io.hpp>
+
+typedef mpl::vector<gray8_image_t, gray16_image_t, rgb8_image_t, rgb16_image_t> my_img_types;
+any_image<my_img_types> runtime_image;
+jpeg_read_image("input.jpg", runtime_image);
+
+gray8s_image_t gradient(runtime_image.dimensions());
+x_luminosity_gradient(const_view(runtime_image), view(gradient));
+jpeg_write_view("x_gradient.jpg", color_converted_view<gray8_pixel_t>(const_view(gradient)));
+
+{% endhighlight %}
+
+<!--
+In this example, we create an image variant that could be 8-bit or 16-bit RGB or grayscale image.
+We then use GIL's I/O extension to load the image from file in its native color space and channel depth.
+If none of the allowed image types matches the image on disk, an exception will be thrown.
+We then construct a 8 bit signed (i.e. char) image to store the gradient and invoke x_gradient on it.
+Finally we save the result into another file.
+We save the view converted to 8-bit unsigned, because JPEG I/O does not support signed char.
+-->
+
+この例の中では、8ビットRGBか16ビットRGBかグレイスケールのImageになることができるImage variantを作成しています。
+それから、ファイルに記録されているColor SpaceとChannel深度のまま画像を読み込む、GILのI/O extensionを使っています。
+用意したImageの型と読み込んだ画像がいずれも一致しなかった場合には、例外が投げられます。
+そして、算出するgradientを記憶するために8ビット符号付き(すなわち、char) Imageを構築し、`x_gradient`を呼び出します。
+最後に、その結果をもうひとつのファイルに保存します。
+JPEG I/Oが符号付きcharをサポートしていないことから、8ビット符号無しViewに変換してから保存します。
+
+<!--
+Note how free functions and methods such as jpeg_read_image, dimensions, view and const_view work on both templated and variant types.
+For templated images view(img) returns a templated view, whereas for image variants it returns a view variant.
+For example, the return type of view(runtime_image) is any_image_view<Views> where Views enumerates four views corresponding to the four image types.
+const_view(runtime_image) returns a any_image_view of the four read-only view types, etc.
+-->
+
+`jpeg_read_image`、`dimensions`、`view`、`const_view`といった、テンプレート化された型とvariantな型の両方で動作する関数やメソッドがどのように振る舞うか注目しましょう。
+variantなImageであれば`view(img)`はvariantなViewを返す一方で、テンプレート化されたImageであれば`view(img)`はテンプレート化されたViewを返します。
+例を挙げると、`view(runtime_image)`の戻り値の型は`any_image_view<Views>`です。(ここの`Views`は上記4種類のImageに対応する4種類のViewを並べたリストです。)
+また、`const_view(runtime_image)`は、4種類のread-onlyなViewの型による`any_image_view`を返します。
+
+<!--
+A warning about using variants: instantiating an algorithm with a variant effectively instantiates it with every possible type the variant can take.
+For binary algorithms, the algorithm is instantiated with every possible combination of the two input types!
+This can take a toll on both the compile time and the executable size.
+-->
+
+variantの使用に関して、ひとつ注意があります。
+ひとつのvariantを引数に取るアルゴリズムをインスタンス化するとき、アルゴリズムとvariantが取りうるあらゆる型との組み合わせがインスタンス化されます。
+ふたつのvariantを引数に取るアルゴリズムでは、ふたつの入力型が取りうる全ての組み合わせでアルゴリズムがインスタンス化されます！
+これは、コンパイル時間と実行ファイルのサイズの両方に多大な影響を与える可能性があります。

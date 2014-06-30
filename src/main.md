@@ -1100,7 +1100,7 @@ GILのImage、Image View、Locatorは、ネストされた`typedef`である`val
 Virtual Image Views
 -->
 
-### <a name="section_10"> Virtual Image View
+### <a name="section_02_10"> Virtual Image View
 
 <!--
 So far we have been dealing with images that have pixels stored in memory.
@@ -1203,7 +1203,7 @@ Here is what the two files look like:
 Run-Time Specified Images and Image Views
 -->
 
-### 実行時に型を指定するImageとImage View
+### <a name="section_02_11"> 実行時に型を指定するImageとImage View
 
 <!--
 So far we have created a generic function that computes the image gradient of a templated image view.
@@ -1237,7 +1237,8 @@ First, we need to make a function object that contains the templated destination
 
 まず始めに、テンプレート化された出力Viewをもち、テンプレート化された入力Viewを引数に取るアプリケーションオペレータをもつ、関数オブジェクトを作成する必要があります。
 
-```cpp
+{% highlight C++ %}
+
 #include <boost/gil/extension/dynamic_image/dynamic_image_all.hpp>
 
 template <typename DstView>
@@ -1250,7 +1251,8 @@ struct x_gradient_obj {
     template <typename SrcView>
     void operator()(const SrcView& src) const { x_luminosity_gradient(src, \_dst); }
 };
-```
+
+{% endhighlight %}
 
 <!--
 The second step is to provide an overload of x_luminosity_gradient that takes image view variant and calls GIL's apply_operation passing it the function object:
@@ -1258,12 +1260,14 @@ The second step is to provide an overload of x_luminosity_gradient that takes im
 
 つづいての手順は、Image View variantを引数に取り、それを関数オブジェクトに渡すGILの`apply_operation`を呼び出す、`x_luminosity_gradient`のオーバーロードを提供することです。
 
-```cpp
+{% highlight C++ %}
+
 template <typename SrcViews, typename DstView>
 void x_luminosity_gradient(const any_image_view<SrcViews>& src, const DstView& dst) {
     apply_operation(src, x_gradient_obj<DstView>(dst));
 }
-```
+
+{% endhighlight %}
 
 <!--
 any_image_view<SrcViews> is the image view variant.
@@ -1287,7 +1291,8 @@ Here is how we can construct a variant and invoke the algorithm:
 
 ここで、いかにvariantを構築し、いかにアルゴリズムを呼び出すのかを示します。
 
-```cpp
+{% highlight C++ %}
+
 #include <boost/mpl/vector.hpp>
 #include <boost/gil/extension/io/jpeg_dynamic_io.hpp>
 
@@ -1298,7 +1303,8 @@ jpeg_read_image("input.jpg", runtime_image);
 gray8s_image_t gradient(runtime_image.dimensions());
 x_luminosity_gradient(const_view(runtime_image), view(gradient));
 jpeg_write_view("x_gradient.jpg", color_converted_view<gray8_pixel_t>(const_view(gradient)));
-```
+
+{% endhighlight %}
 
 <!--
 In this example, we create an image variant that could be 8-bit or 16-bit RGB or grayscale image.
