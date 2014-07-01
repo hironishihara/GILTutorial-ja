@@ -46,7 +46,7 @@ Hiroaki Nishihara (<hiro.nishihara@gmail.com>)
 Boost Software License, Version 1.0
 
 #### 翻訳日時:
-2014年6月22日〜
+2014年6月22日〜2014年7月1日
 
 #### Repository:
 <https://github.com/hironishihara/GILTutorial-ja>
