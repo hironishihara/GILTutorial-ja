@@ -1407,13 +1407,13 @@ If performance is an issue, it might be worth trying your code with different co
 Appendix
 -->
 
-## 付録
+## <a name="section_03"> 付録
 
 <!--
 Naming convention for GIL concrete types
 -->
 
-### GILが定める型の命名規則
+### <a name="section_03_01"> GILが定める型の命名規則
 
 <!--
 Concrete (non-generic) GIL types follow this naming convention:
@@ -1447,9 +1447,11 @@ Channel型は、デフォルトで、符号なし整数型になります。
 `_step`は、(逆向きや、数個とばし等)少し変わった方法でデータの走査を行うImage View、Locator、Iteratorであることを表します。
 `ClassType`には、_image (Image)，_view (Image View)，_loc (Pixelの2次元Locator)，_ptr (Pixel Iterator)，_ref (Pixel参照)，_pixel (Pixelの値)のいずれかです。
 
-```cpp
+{% highlight C++ %}
+
 bgr8_image_t             a;    // 8-bit interleaved BGR image
 cmyk16_pixel_t;          b;    // 16-bit CMYK pixel value;
 cmyk16c_planar_ref_t     c(b); // const reference to a 16-bit planar CMYK pixel x.
 rgb32f_planar_step_ptr_t d;    // step pointer to a 32-bit planar RGB pixel.
-```
+
+{% endhighlight %}
