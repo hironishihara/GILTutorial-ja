@@ -1167,11 +1167,11 @@ template <typename DstView>
 struct x_gradient_obj {
     typedef void result_type;        // required typedef
 
-    const DstView& \_dst;
-    x_gradient_obj(const DstView& dst) : \_dst(dst) {}
+    const DstView& _dst;
+    x_gradient_obj(const DstView& dst) : _dst(dst) {}
 
     template <typename SrcView>
-    void operator()(const SrcView& src) const { x_luminosity_gradient(src, \_dst); }
+    void operator()(const SrcView& src) const { x_luminosity_gradient(src, _dst); }
 };
 ```
 
@@ -1199,10 +1199,10 @@ Algorithms that perform an operation for each pixel in an image view have practi
 
 `any_image_view<SrcViews>`は、Image View variantです。
 これは、variantが取りうるViewの型を列挙したリストである`SrcViews`でテンプレート化されています。
-メモリのブロック内にインスタンスが含まれるのと同じように、`src`には現在インスタンス化されている型のインデクスが含まれます。
+インスタンスがメモリのブロックの中に含まれるのと同じように、`src`には現在インスタンス化されている型のインデクスが含まれています。
 `apply_operation`はインデクスによるswitch文判定を実施し、各ケースごとに正しいViewの型へメモリをキャストし、そのViewと共に関数オブジェクトを実行します。
 variant上で呼び出されたアルゴリズムは、switch文1個分のオーバーヘッドをもちます。
-Image Viewの各Pixelに処理を実行するアルゴリズムは、variantと共に使用した場合にもパフォーマンスの低下はありません。
+Image Viewの各Pixelに処理を実行するアルゴリズムは、variantと共に使用した場合にも、これといったパフォーマンスの低下は起こりません。
 
 <!--
 Here is how we can construct a variant and invoke the algorithm:
@@ -1258,6 +1258,6 @@ This can take a toll on both the compile time and the executable size.
 -->
 
 variantの使用に関して、ひとつ注意があります。
-ひとつのvariantを引数に取るアルゴリズムをインスタンス化するとき、アルゴリズムとvariantが取りうるあらゆる型との組み合わせがインスタンス化されます。
+ひとつのvariantを引数に取るアルゴリズムをインスタンス化するとき、variantが取りうるあらゆる型でアルゴリズムがインスタンス化されます。
 ふたつのvariantを引数に取るアルゴリズムでは、ふたつの入力型が取りうる全ての組み合わせでアルゴリズムがインスタンス化されます！
-これは、コンパイル時間と実行ファイルのサイズの両方に多大な影響を与える可能性があります。
+これは、コンパイル時間と実行ファイルのサイズに多大な影響を与える可能性があります。
