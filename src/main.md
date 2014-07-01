@@ -1280,10 +1280,10 @@ Algorithms that perform an operation for each pixel in an image view have practi
 
 `any_image_view<SrcViews>`は、Image View variantです。
 これは、variantが取りうるViewの型を列挙したリストである`SrcViews`でテンプレート化されています。
-メモリのブロック内にインスタンスが含まれるのと同じように、`src`には現在インスタンス化されている型のインデクスが含まれます。
+インスタンスがメモリのブロックの中に含まれるのと同じように、`src`には現在インスタンス化されている型のインデクスが含まれています。
 `apply_operation`はインデクスによるswitch文判定を実施し、各ケースごとに正しいViewの型へメモリをキャストし、そのViewと共に関数オブジェクトを実行します。
 variant上で呼び出されたアルゴリズムは、switch文1個分のオーバーヘッドをもちます。
-Image Viewの各Pixelに処理を実行するアルゴリズムは、variantと共に使用した場合にもパフォーマンスの低下はありません。
+Image Viewの各Pixelに処理を実行するアルゴリズムは、variantと共に使用した場合にも、これといったパフォーマンスの低下は起こりません。
 
 <!--
 Here is how we can construct a variant and invoke the algorithm:
@@ -1341,6 +1341,64 @@ This can take a toll on both the compile time and the executable size.
 -->
 
 variantの使用に関して、ひとつ注意があります。
-ひとつのvariantを引数に取るアルゴリズムをインスタンス化するとき、アルゴリズムとvariantが取りうるあらゆる型との組み合わせがインスタンス化されます。
+ひとつのvariantを引数に取るアルゴリズムをインスタンス化するとき、variantが取りうるあらゆる型でアルゴリズムがインスタンス化されます。
 ふたつのvariantを引数に取るアルゴリズムでは、ふたつの入力型が取りうる全ての組み合わせでアルゴリズムがインスタンス化されます！
-これは、コンパイル時間と実行ファイルのサイズの両方に多大な影響を与える可能性があります。
+これは、コンパイル時間と実行ファイルのサイズに多大な影響を与える可能性があります。
+
+<!--
+Conclusion
+-->
+
+### まとめ
+
+<!--
+This tutorial provides a glimpse at the challenges associated with writing generic and efficient image processing algorithms in GIL.
+We have taken a simple algorithm and shown how to make it work with image representations that vary in bit depth, color space, ordering of the channels, and planar/interleaved structure.
+We have demonstrated that the algorithm can work with fully abstracted virtual images, and even images whose type is specified at run time.
+The associated video presentation also demonstrates that even for complex scenarios the generated assembly is comparable to that of a C version of the algorithm, hand-written for the specific image types.
+-->
+
+このチュートリアルでは、GILによるジェネリックで効率的な画像処理アルゴリズムの記述に関する挑戦の一端をお見せしました。
+シンプルなアルゴリズムを対象に、どのようにしてそのアルゴリズムを形式(Channel深度、Color Space、Channel順、プラナー/インタリーブ)が様々に異なる画像と共に動作させるのか示しました。
+そのアルゴリズムが完全に実体のないVirtual Imageと共に動作すること、実行時に型の決まるImageと共に動作することを実演しました。
+これに関連するプレゼンテーション動画では、複雑な状況であろうともGILアルゴリズムから生成されたアセンブリが、ハンドコーディングで特定の形式に特化したC言語によるアルゴリズムから生成されたアセンブリに匹敵することを実演しています。
+
+<!--
+Yet, even for such a simple algorithm, we are far from making a fully generic and optimized code.
+In particular, the presented algorithms work on homogeneous images, i.e. images whose pixels have channels that are all of the same type.
+There are examples of images, such as a packed 565 RGB format, which contain channels of different types.
+While GIL provides concepts and algorithms operating on heterogeneous pixels, we leave the task of extending x_gradient as an exercise for the reader.
+Second, after computing the value of the gradient we are simply casting it to the destination channel type.
+This may not always be the desired operation.
+For example, if the source channel is a float with range [0..1] and the destination is unsigned char, casting the half-difference to unsigned char will result in either 0 or 1.
+Instead, what we might want to do is scale the result into the range of the destination channel.
+GIL's channel-level algorithms might be useful in such cases.
+For example, channel_convert converts between channels by linearly scaling the source channel value into the range of the destination channel.
+-->
+
+ここまで、簡単なアルゴリズムを用いていたにもかかわらず、完璧にジェネリックで最適化されたコードの作成からは程遠いところにいます。
+特に、現状のアルゴリズムは、ホモジーニアスImage(すなわち、中のPixelが全て同じ型のChannelをもっているImage)の上で動作するものになっています。
+例えば、565 RGBフォーマットのように異なるChannelをもつ画像も存在します。
+GILは、このようなヘテロジーニアスPixelを扱うConceptやアルゴリズムを提供しているので、これらに対応するための`x_gradient`の拡張については読者の練習問題として残しておくことにします。
+その他にも、これまでgradientの値を計算した後には、それを目的のChannelの型へ単純にキャストしてきました。
+しかし、これは必ずしも望ましい操作ではないかもしれません。
+例えば、入力Channelが[0..1]範囲の浮動小数点型で、出力Channelが`unsigned char`型であった場合、`x_gradient`の各Pixelをキャストしたものは0か1になるでしょう。
+そうではなく、その結果が出力Channelのレンジに合わせてスケールされていたらいいなと考えるのではないでしょうか。
+このようなケースでは、GILのChannelレベルのアルゴリズムが便利かもしれません。
+例えば、`channel_convert`は入力Channelの値を出力Channel型のレンジに線形でスケーリングします。
+
+<!--
+There is a lot to be done in improving the performance as well.
+Channel-level operations, such as the half-difference, could be abstracted out into atomic channel-level algorithms and performance overloads could be provided for concrete channel types.
+Processor-specific operations could be used, for example, to perform the operation over an entire row of pixels simultaneously, or the data could be prefetched.
+All of these optimizations can be realized as performance specializations of the generic algorithm.
+Finally, compilers, while getting better over time, are still failing to fully optimize generic code in some cases, such as failing to inline some functions or put some variables into registers.
+If performance is an issue, it might be worth trying your code with different compilers.
+-->
+
+パフォーマンスをさらに向上させるためにやることがたくさんあります。
+ここまで行ってきたようなChannelレベルの操作はアトミックなChannelレベルのアルゴリズムに抽象化され、具体的なChannel型に向けたパフォーマンスを考慮したオーバーロードが提供されるでしょう。
+例えば、1行分のPixelを同時に処理するためにプロセッサ固有の操作が使われるかもしれませんし、データの先取りが行われるかもしれません。
+このような最適化は、ジェネリックアルゴリズムがパフォーマンスに特化することで実現されるでしょう。
+最後に、日を追うごとにどんどん良くなってはいますが、コンパイラは、関数のインライン化をしなかったり、いくつかの変数をレジスタに置いたりと、いくつかのケースでジェネリックなコードの完璧な最適化に失敗します。
+パフォーマンスが問題になる場合には、異なるコンパイラにかけてみるのも良いかもしれません。
