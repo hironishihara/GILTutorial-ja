@@ -1339,7 +1339,7 @@ ColorSpace + BitDepth + [f | s]+ [c] + [_planar] + [_step] + ClassType + _t
 
 あらかじめ定められている(ジェネリックでない)GILの型は、次に示す命名規則に従っています。
 
-ColorSpace + BitDepth + [f | s]+ [c] + [_planar] + [_step] + ClassType + _t
+ColorSpace + BitDepth + [f \| s]+ [c] + [_planar] + [_step] + ClassType + _t
 
 <!--
 Where ColorSpace also indicates the ordering of components.
