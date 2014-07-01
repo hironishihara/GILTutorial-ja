@@ -1402,3 +1402,54 @@ If performance is an issue, it might be worth trying your code with different co
 このような最適化は、ジェネリックアルゴリズムがパフォーマンスに特化することで実現されるでしょう。
 最後に、日を追うごとにどんどん良くなってはいますが、コンパイラは、関数のインライン化をしなかったり、いくつかの変数をレジスタに置いたりと、いくつかのケースでジェネリックなコードの完璧な最適化に失敗します。
 パフォーマンスが問題になる場合には、異なるコンパイラにかけてみるのも良いかもしれません。
+
+<!--
+Appendix
+-->
+
+## 付録
+
+<!--
+Naming convention for GIL concrete types
+-->
+
+### GILが定める型の命名規則
+
+<!--
+Concrete (non-generic) GIL types follow this naming convention:
+ColorSpace + BitDepth + [f | s]+ [c] + [_planar] + [_step] + ClassType + _t
+-->
+
+あらかじめ定められている(ジェネリックでない)GILの型は、次に示す命名規則に従っています。
+
+ColorSpace + BitDepth + [f | s]+ [c] + [_planar] + [_step] + ClassType + _t
+
+<!--
+Where ColorSpace also indicates the ordering of components.
+Examples are rgb, bgr, cmyk, rgba.
+BitDepth indicates the bit depth of the color channel.
+Examples are 8,16,32.
+By default the type of channel is unsigned integral; using s indicates signed integral and f - a floating point type, which is always signed.
+c indicates object operating over immutable pixels.
+_planar indicates planar organization (as opposed to interleaved).
+_step indicates special image views, locators and iterators which traverse the data in non-trivial way (for example, backwards or every other pixel).
+ClassType is _image (image), _view (image view), _loc (pixel 2D locator) _ptr (pixel iterator), _ref (pixel reference), _pixel (pixel value).
+-->
+
+この`ColorSpace`は色要素の順序を表します。
+例えば、`rgb`、`bgr`、`cmyk`、`rgba`などがあります。
+`BitDepth`は色Channelのビット深度を表します。
+例えば、8、16、32などがあります。
+Channel型は、デフォルトで、符号なし整数型になります。
+`s`が付くと符号付き整数型であることを表し、`f`が付くと(常に符号付きの)浮動小数点型であることを表します。
+`c`は、imutableなPixelを扱うオブジェクトであることを表します。
+`_planar`は、(インタリーブ形式ではなく)プラナー形式であることを表します。
+`_step`は、(逆向きや、数個とばし等)少し変わった方法でデータの走査を行うImage View、Locator、Iteratorであることを表します。
+`ClassType`には、_image (Image)，_view (Image View)，_loc (Pixelの2次元Locator)，_ptr (Pixel Iterator)，_ref (Pixel参照)，_pixel (Pixelの値)のいずれかです。
+
+```cpp
+bgr8_image_t             a;    // 8-bit interleaved BGR image
+cmyk16_pixel_t;          b;    // 16-bit CMYK pixel value;
+cmyk16c_planar_ref_t     c(b); // const reference to a 16-bit planar CMYK pixel x.
+rgb32f_planar_step_ptr_t d;    // step pointer to a 32-bit planar RGB pixel.
+```
