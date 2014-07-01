@@ -825,7 +825,7 @@ Now that x_gradient_unguarded operates on every pixel, we can rewrite it more co
 void x_gradient_unguarded(const gray8c_view_t& src, const gray8s_view_t& dst) {
     gray8c_view_t::iterator src_it = src.begin();
     for (gray8s_view_t::iterator dst_it = dst.begin(); dst_it!=dst.end(); ++dst_it, ++src_it)
-      * dst_it = (src_it.x()[-1] - src_it.x()[1]) / 2;
+      *dst_it = (src_it.x()[-1] - src_it.x()[1]) / 2;
 }
 
 {% endhighlight %}
@@ -1245,11 +1245,11 @@ template <typename DstView>
 struct x_gradient_obj {
     typedef void result_type;        // required typedef
 
-    const DstView& \_dst;
-    x_gradient_obj(const DstView& dst) : \_dst(dst) {}
+    const DstView& _dst;
+    x_gradient_obj(const DstView& dst) : _dst(dst) {}
 
     template <typename SrcView>
-    void operator()(const SrcView& src) const { x_luminosity_gradient(src, \_dst); }
+    void operator()(const SrcView& src) const { x_luminosity_gradient(src, _dst); }
 };
 
 {% endhighlight %}
