@@ -1349,7 +1349,7 @@ variantの使用に関して、ひとつ注意があります。
 Conclusion
 -->
 
-### まとめ
+### <a name="section_02_12"> まとめ
 
 <!--
 This tutorial provides a glimpse at the challenges associated with writing generic and efficient image processing algorithms in GIL.
