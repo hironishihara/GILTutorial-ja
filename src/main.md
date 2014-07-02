@@ -1194,7 +1194,7 @@ jpeg_write_view("mandel_grad.jpg",color_converted_view<gray8_pixel_t>(const_view
 Here is what the two files look like:
 -->
 
-ふたつのファイルがどのようになったかを示します。
+ふたつのファイルがどのようになっているか示します。
 
 ![マンデルブロ集合](http://hironishihara.github.com/GILTutorial-ja/src/img/mandel.jpg "マンデルブロ集合")
 
@@ -1215,11 +1215,11 @@ Most of GIL's algorithms and all of the view transformation functions also work 
 -->
 
 ここまで、テンプレート化されたImage Viewのgradient画像を算出するジェネリック関数を作成してきました。
-しかし、Color SpaceやChannel深度などといったImage Viewのプロパティをコンパイル時に利用できない場合もあるかもしれません。
-GILの`dynamic_image` extensionは、variantとも呼ばれる実行時に型が決まるGILコンストラクトと共に動作することを可能にします。
-GILは、実行時に型が決まる即席のImageのModelである`any_image`と、実行時に型が決まる即席のImage ViewのModelである`any_image_view`を提供します。
-このようなメカニズムは、`any_pixel`や`any_pixel_iterator`など他のvariantを作成するためのものです。
-`copy_pixels`が2個の引数の片方もしくは両方にvariantを取ることが可能であるように、ほとんどのGILアルゴリズムと全てのView変換関数も、実行時に型が決まる即席のImage Viewや実行時に型が決まる即席のアルゴリズムと共に動作することが可能です。
+しかし、Color SpaceやChannel深度などのImage Viewのプロパティをコンパイル時に利用できないといった場合だってあるかもしれません。
+GILの`dynamic_image` extensionは、variantとも呼ばれる実行時に型が決まるGILコンストラクトとGILアルゴリズムが共に動作することを可能にします。
+GILは、実行時に決まる型でインスタンス化されるImageのModelである`any_image`と、実行時に決まる型でインスタンス化されるImage ViewのModelである`any_image_view`を提供します。
+このようなメカニズムは、`any_pixel`や`any_pixel_iterator`などのような上記以外のvariantを作成するためのものは用意されていません。
+`copy_pixels`が2個の引数の片方もしくは両方にvariantを取ることが可能であるように、ほとんどのGILアルゴリズムと全てのView変換関数は、実行時に決まる型でインスタンス化されるImage Viewやアルゴリズムと共に動作します。
 
 <!--
 Lets make our x_luminosity_gradient algorithm take a variant image view.
@@ -1227,7 +1227,7 @@ For simplicity, let's assume that only the source view can be a variant.
 (As an example of using multiple variants, see GIL's image view algorithm overloads taking multiple variants.)
 -->
 
-variantなImage Viewをとる`x_luminosity_gradient`アルゴリズムを作ってみましょう。
+variantなImage Viewを引数に取る`x_luminosity_gradient`アルゴリズムを作ってみましょう。
 簡単のために、入力Viewだけvariantにすることができるようにしてみましょう。
 (複数のvariantを使った例は、複数のvariantを引数に取るようにオーバーロードしたGILのImage Viewアルゴリズムを参照ください。)
 
@@ -1258,7 +1258,7 @@ struct x_gradient_obj {
 The second step is to provide an overload of x_luminosity_gradient that takes image view variant and calls GIL's apply_operation passing it the function object:
 -->
 
-つづいての手順は、Image View variantを引数に取り、それを関数オブジェクトに渡すGILの`apply_operation`を呼び出す、`x_luminosity_gradient`のオーバーロードを提供することです。
+つづいて、Image View variantを引数に取り、それを関数オブジェクトに渡すGILの`apply_operation`を呼び出す、`x_luminosity_gradient`のオーバーロードを提供します。
 
 {% highlight C++ %}
 
@@ -1315,9 +1315,9 @@ Finally we save the result into another file.
 We save the view converted to 8-bit unsigned, because JPEG I/O does not support signed char.
 -->
 
-この例の中では、8ビットRGBか16ビットRGBかグレイスケールのImageになることができるImage variantを作成しています。
-それから、ファイルに記録されているColor SpaceとChannel深度のまま画像を読み込む、GILのI/O extensionを使っています。
-用意したImageの型と読み込んだ画像がいずれも一致しなかった場合には、例外が投げられます。
+この例の中では、8ビット/16ビットでRGB/グレイスケールのImageになることができるImage variantを作成しています。
+つづいて、画像をファイルに記録されているColor SpaceとChannel深度のまま読み込む、GILのI/O extensionを使っています。
+読み込んだ画像が用意したいずれImageの型とも一致しなかった場合には、例外が投げられます。
 そして、算出するgradientを記憶するために8ビット符号付き(すなわち、char) Imageを構築し、`x_gradient`を呼び出します。
 最後に、その結果をもうひとつのファイルに保存します。
 JPEG I/Oが符号付きcharをサポートしていないことから、8ビット符号無しViewに変換してから保存します。
@@ -1376,14 +1376,15 @@ GIL's channel-level algorithms might be useful in such cases.
 For example, channel_convert converts between channels by linearly scaling the source channel value into the range of the destination channel.
 -->
 
-ここまで、簡単なアルゴリズムを用いていたにもかかわらず、完璧にジェネリックで最適化されたコードの作成からは程遠いところにいます。
-特に、現状のアルゴリズムは、ホモジーニアスImage(すなわち、中のPixelが全て同じ型のChannelをもっているImage)の上で動作するものになっています。
+ここまで、簡単なアルゴリズムを用いていたにもかかわらず、完璧にジェネリックで完璧に最適化されたコードの作成からは程遠いところにいます。
+特に、現状のアルゴリズムはホモジーニアスImage(すなわち、中のPixelが全て同じ型のChannelをもっているImage)の上で動作するものになっています。
 例えば、565 RGBフォーマットのように異なるChannelをもつ画像も存在します。
-GILは、このようなヘテロジーニアスPixelを扱うConceptやアルゴリズムを提供しているので、これらに対応するための`x_gradient`の拡張については読者の練習問題として残しておくことにします。
+GILは、このようなヘテロジーニアスPixelを扱うConceptやアルゴリズムも提供しています。
+`x_gradient`をヘテロジーニアスPixelに対応させるという拡張に関しては、これを読んでいるみなさんの練習問題とすることにしましょう。
 その他にも、これまでgradientの値を計算した後には、それを目的のChannelの型へ単純にキャストしてきました。
-しかし、これは必ずしも望ましい操作ではないかもしれません。
-例えば、入力Channelが[0..1]範囲の浮動小数点型で、出力Channelが`unsigned char`型であった場合、`x_gradient`の各Pixelをキャストしたものは0か1になるでしょう。
-そうではなく、その結果が出力Channelのレンジに合わせてスケールされていたらいいなと考えるのではないでしょうか。
+しかし、これは必ずしも望ましい操作でなかったかもしれません。
+例えば、入力Channelが[0..1]範囲の浮動小数点型で、出力Channelが`unsigned char`型であった場合、`x_gradient`の各Pixelをキャストしたものは全て0か1になるでしょう。
+そうではなく、算出された結果を出力Channelのレンジに合わせてスケールしたいと考えるのではないでしょうか。
 このようなケースでは、GILのChannelレベルのアルゴリズムが便利かもしれません。
 例えば、`channel_convert`は入力Channelの値を出力Channel型のレンジに線形でスケーリングします。
 
@@ -1397,7 +1398,7 @@ If performance is an issue, it might be worth trying your code with different co
 -->
 
 パフォーマンスをさらに向上させるためにやることがたくさんあります。
-ここまで行ってきたようなChannelレベルの操作はアトミックなChannelレベルのアルゴリズムに抽象化され、具体的なChannel型に向けたパフォーマンスを考慮したオーバーロードが提供されるでしょう。
+ここまで行ってきたようなChannelレベルの操作は、アトミックなChannelレベルのアルゴリズムに抽象化され、具体的なChannel型に向けたパフォーマンスを考慮したオーバーロードが提供されるでしょう。
 例えば、1行分のPixelを同時に処理するためにプロセッサ固有の操作が使われるかもしれませんし、データの先取りが行われるかもしれません。
 このような最適化は、ジェネリックアルゴリズムがパフォーマンスに特化することで実現されるでしょう。
 最後に、日を追うごとにどんどん良くなってはいますが、コンパイラは、関数のインライン化をしなかったり、いくつかの変数をレジスタに置いたりと、いくつかのケースでジェネリックなコードの完璧な最適化に失敗します。
