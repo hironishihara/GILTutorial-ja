@@ -213,8 +213,8 @@ The output is a grayscale view with a 8-bit signed (denoted by the "s") integer 
 See Appendix 1 for the complete convension GIL uses to name concrete types.
 -->
 
-`gray8c_view_t`は入力画像の型です。Pixelがread-only ("c"で表されています)の8ビットグレイスケールViewです。
-出力は8ビット符号付き("s"で表されています)整数型のグレイスケール画像です。
+`gray8c_view_t`は入力画像の型です。Pixelがread-only (`c`で表されています)の8ビットグレイスケールViewです。
+出力は8ビット符号付き(`s`で表されています)整数型のグレイスケール画像です。
 GILが定める型の命名規則については、付録を参照ください。
 
 <!--
@@ -1454,7 +1454,7 @@ ColorSpace + BitDepth + [f | s]+ [c] + [_planar] + [_step] + ClassType + _t
 
 あらかじめ定められている(ジェネリックでない)GILの型は、次に示す命名規則に従っています。
 
-ColorSpace + BitDepth + [f \| s]+ [c] + [_planar] + [_step] + ClassType + _t
+ColorSpace + BitDepth + [`f` \| `s`]+ [`c`] + [`_planar`] + [`_step`] + ClassType + `_t`
 
 <!--
 Where ColorSpace also indicates the ordering of components.
@@ -1468,16 +1468,16 @@ _step indicates special image views, locators and iterators which traverse the d
 ClassType is _image (image), _view (image view), _loc (pixel 2D locator) _ptr (pixel iterator), _ref (pixel reference), _pixel (pixel value).
 -->
 
-この`ColorSpace`は色要素の順序を表します。
+このColorSpaceは色要素の順序を表します。
 例えば、`rgb`、`bgr`、`cmyk`、`rgba`などがあります。
-`BitDepth`は色Channelのビット深度を表します。
-例えば、8、16、32などがあります。
+BitDepthは色Channelのビット深度を表します。
+例えば、`8`、`16`、`32`などがあります。
 Channel型は、デフォルトで、符号なし整数型になります。
 `s`が付くと符号付き整数型であることを表し、`f`が付くと(常に符号付きの)浮動小数点型であることを表します。
 `c`は、imutableなPixelを扱うオブジェクトであることを表します。
 `_planar`は、(インタリーブ形式ではなく)プラナー形式であることを表します。
 `_step`は、(逆向きや、数個とばし等)少し変わった方法でデータの走査を行うImage View、Locator、Iteratorであることを表します。
-`ClassType`には、_image (Image)，_view (Image View)，_loc (Pixelの2次元Locator)，_ptr (Pixel Iterator)，_ref (Pixel参照)，_pixel (Pixelの値)のいずれかです。
+ClassTypeは、`_image` (Image)、`_view` (Image View)、`_loc` (Pixelの2次元Locator)、`_ptr` (Pixel Iterator)、`_ref` (Pixel参照)、`_pixel` (Pixel値)のいずれかとなっています。
 
 {% highlight C++ %}
 
