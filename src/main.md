@@ -182,8 +182,8 @@ The output is a grayscale view with a 8-bit signed (denoted by the "s") integer 
 See Appendix 1 for the complete convension GIL uses to name concrete types.
 -->
 
-`gray8c_view_t`は入力画像の型です。Pixelがread-only (`c`で表されています)の8ビットグレイスケールViewです。
-出力は8ビット符号付き(`s`で表されています)整数型のグレイスケール画像です。
+`gray8c_view_t`は入力画像の型です。Pixelがread-only (`c`の文字がそれを表しています)の8ビットグレイスケールViewです。
+出力は8ビット符号付き(`s`の文字がそれを表しています)整数型のグレイスケール画像です。
 GILが定める型の命名規則については、付録を参照ください。
 
 <!--
@@ -345,7 +345,7 @@ Its operator[] multiplies the index by its step.
 各行のループを回すかわりに各列のループを回し、その中で垂直方向に移動するIteratorである`y_iterator`を作成します。
 ただし、垂直方向に隣接するPixel間のメモリ上での距離はその画像の1行分のバイト数に等しいので、垂直方向Iteratorにシンプルなポインタを使用することはできません。
 ここでGILはサイズが8バイトの特別なステップIterator (Cポインタとステップ幅の値を含みます)を使用します。
-`operator[]`はインデクス値とステップ幅の値との積を求めます。
+このItaratorの`operator[]`はインデクス値とステップ幅の値との積を求めます。
 
 <!--
 The above version of y_gradient, however, is much slower (easily an order of magnitude slower) than x_gradient because of the memory access pattern;
@@ -380,7 +380,7 @@ void y_gradient(const gray8c_view_t& src, const gray8s_view_t& dst) {
 This sample code also shows an alternative way of using pixel iterators - instead of operator[] one could use increments and dereferences.
 -->
 
-このサンプルコードでは、`operator[]`を通してインクリメントと間接参照を行う方法のかわりに、Pixel Iteratorを用いる代替手段を示しています。
+このサンプルコードでは、Iteratorの`operator[]`を通してインクリメントと間接参照を行うかわりに、Iteratorそのものを用いる代替手段を示しています。
 
 <!--
 Using Locators
